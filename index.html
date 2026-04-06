@@ -735,6 +735,72 @@ canvas { max-height: 360px; }
 // ════════════════════════════════════════════
 
 const COLORS = ['#c8a96e','#5cb8a0','#8b7fd4','#e05c8a','#4ab8d4'];
+
+// Known ticker data — auto-fills when user enters a recognized ticker
+const TICKER_DB = {
+  // High-income covered call ETFs
+  'QQQI':  { name: 'NEOS Nasdaq-100 High Income',       yield: 42,   er: 0.68, downturnBeta: 1.00, avgCapture: 90,  bullCapture: 55,  incomeType: 'mixed',     accountRec: 'roth'   },
+  'SPYI':  { name: 'NEOS S&P 500 High Income',          yield: 11.5, er: 0.68, downturnBeta: 0.85, avgCapture: 85,  bullCapture: 60,  incomeType: 'mixed',     accountRec: 'roth'   },
+  'IWMI':  { name: 'NEOS Russell 2000 High Income',     yield: 18,   er: 0.68, downturnBeta: 1.05, avgCapture: 85,  bullCapture: 55,  incomeType: 'mixed',     accountRec: 'roth'   },
+  'JEPI':  { name: 'JPMorgan Equity Premium Income',    yield: 8.2,  er: 0.35, downturnBeta: 0.70, avgCapture: 75,  bullCapture: 50,  incomeType: 'ordinary',  accountRec: 'roth'   },
+  'JEPQ':  { name: 'JPMorgan Nasdaq Equity Premium',    yield: 11.5, er: 0.35, downturnBeta: 0.90, avgCapture: 82,  bullCapture: 68,  incomeType: 'ordinary',  accountRec: 'roth'   },
+  'DIVO':  { name: 'Amplify CWP Enhanced Div Income',   yield: 4.8,  er: 0.55, downturnBeta: 0.75, avgCapture: 80,  bullCapture: 70,  incomeType: 'qualified', accountRec: 'either' },
+  'QYLD':  { name: 'Global X Nasdaq 100 Covered Call',  yield: 11,   er: 0.60, downturnBeta: 0.90, avgCapture: 60,  bullCapture: 30,  incomeType: 'return',    accountRec: 'brokerage'},
+  'XYLD':  { name: 'Global X S&P 500 Covered Call',     yield: 9.5,  er: 0.60, downturnBeta: 0.80, avgCapture: 60,  bullCapture: 35,  incomeType: 'return',    accountRec: 'brokerage'},
+  'RYLD':  { name: 'Global X Russell 2000 Covered Call',yield: 12,   er: 0.60, downturnBeta: 0.95, avgCapture: 55,  bullCapture: 30,  incomeType: 'return',    accountRec: 'brokerage'},
+  'SCHD':  { name: 'Schwab US Dividend Equity',         yield: 3.5,  er: 0.06, downturnBeta: 0.80, avgCapture: 90,  bullCapture: 80,  incomeType: 'qualified', accountRec: 'either' },
+  'VYM':   { name: 'Vanguard High Dividend Yield',      yield: 2.9,  er: 0.06, downturnBeta: 0.82, avgCapture: 88,  bullCapture: 78,  incomeType: 'qualified', accountRec: 'either' },
+  'DVY':   { name: 'iShares Select Dividend',           yield: 3.8,  er: 0.38, downturnBeta: 0.85, avgCapture: 82,  bullCapture: 72,  incomeType: 'qualified', accountRec: 'either' },
+  'DGRO':  { name: 'iShares Core Dividend Growth',      yield: 2.4,  er: 0.08, downturnBeta: 0.82, avgCapture: 92,  bullCapture: 85,  incomeType: 'qualified', accountRec: 'either' },
+  'QQQ':   { name: 'Invesco Nasdaq-100 ETF',            yield: 0.6,  er: 0.20, downturnBeta: 1.00, avgCapture: 100, bullCapture: 100, incomeType: 'qualified', accountRec: 'either' },
+  'SPY':   { name: 'SPDR S&P 500 ETF',                  yield: 1.3,  er: 0.09, downturnBeta: 1.00, avgCapture: 100, bullCapture: 100, incomeType: 'qualified', accountRec: 'either' },
+  'VOO':   { name: 'Vanguard S&P 500 ETF',              yield: 1.3,  er: 0.03, downturnBeta: 1.00, avgCapture: 100, bullCapture: 100, incomeType: 'qualified', accountRec: 'either' },
+  'VTI':   { name: 'Vanguard Total Stock Market',       yield: 1.4,  er: 0.03, downturnBeta: 1.00, avgCapture: 100, bullCapture: 100, incomeType: 'qualified', accountRec: 'either' },
+  'IVV':   { name: 'iShares Core S&P 500',              yield: 1.3,  er: 0.03, downturnBeta: 1.00, avgCapture: 100, bullCapture: 100, incomeType: 'qualified', accountRec: 'either' },
+  'CONY':  { name: 'YieldMax COIN Option Income',       yield: 60,   er: 0.99, downturnBeta: 1.30, avgCapture: 70,  bullCapture: 40,  incomeType: 'ordinary',  accountRec: 'roth'   },
+  'TSLY':  { name: 'YieldMax TSLA Option Income',       yield: 55,   er: 0.99, downturnBeta: 1.20, avgCapture: 65,  bullCapture: 35,  incomeType: 'ordinary',  accountRec: 'roth'   },
+  'MSFO':  { name: 'YieldMax MSFT Option Income',       yield: 18,   er: 0.99, downturnBeta: 0.95, avgCapture: 70,  bullCapture: 45,  incomeType: 'ordinary',  accountRec: 'roth'   },
+  'NVDY':  { name: 'YieldMax NVDA Option Income',       yield: 65,   er: 0.99, downturnBeta: 1.25, avgCapture: 65,  bullCapture: 35,  incomeType: 'ordinary',  accountRec: 'roth'   },
+  'AMZY':  { name: 'YieldMax AMZN Option Income',       yield: 22,   er: 0.99, downturnBeta: 1.00, avgCapture: 68,  bullCapture: 42,  incomeType: 'ordinary',  accountRec: 'roth'   },
+  'GOOGY': { name: 'YieldMax GOOGL Option Income',      yield: 18,   er: 0.99, downturnBeta: 0.95, avgCapture: 68,  bullCapture: 42,  incomeType: 'ordinary',  accountRec: 'roth'   },
+  'YMAG':  { name: 'YieldMax Magnificent 7 Fund',       yield: 35,   er: 0.99, downturnBeta: 1.10, avgCapture: 68,  bullCapture: 40,  incomeType: 'ordinary',  accountRec: 'roth'   },
+  'YMAX':  { name: 'YieldMax Universe Fund',            yield: 30,   er: 0.99, downturnBeta: 1.05, avgCapture: 68,  bullCapture: 40,  incomeType: 'ordinary',  accountRec: 'roth'   },
+  'KLIP':  { name: 'KraneShares China Internet & CC',   yield: 25,   er: 0.95, downturnBeta: 1.10, avgCapture: 70,  bullCapture: 45,  incomeType: 'ordinary',  accountRec: 'roth'   },
+  'FEPI':  { name: 'REX FANG & Innovation Equity IP',   yield: 25,   er: 0.65, downturnBeta: 1.05, avgCapture: 75,  bullCapture: 45,  incomeType: 'mixed',     accountRec: 'roth'   },
+  'GPIQ':  { name: 'Goldman Sachs Nasdaq-100 CC',       yield: 12,   er: 0.29, downturnBeta: 0.95, avgCapture: 85,  bullCapture: 65,  incomeType: 'ordinary',  accountRec: 'roth'   },
+  'GPIX':  { name: 'Goldman Sachs S&P 500 CC',          yield: 10,   er: 0.29, downturnBeta: 0.85, avgCapture: 85,  bullCapture: 65,  incomeType: 'ordinary',  accountRec: 'roth'   },
+};
+
+function autoFillTicker(i) {
+  const tickerEl = document.getElementById('ticker_' + i);
+  if (!tickerEl) return;
+  const t = tickerEl.value.trim().toUpperCase();
+  tickerEl.value = t;
+  const data = TICKER_DB[t];
+  if (!data) return;
+
+  // Fill name
+  const nameEl = document.getElementById('name_' + i);
+  if (nameEl && !nameEl.value) nameEl.value = data.name;
+
+  // Fill inline yield/ER
+  const yieldEl = document.getElementById('yield_' + i);
+  if (yieldEl) yieldEl.value = data.yield;
+  const erEl = document.getElementById('er_' + i);
+  if (erEl) erEl.value = data.er;
+
+  // Fill hidden vars
+  const betaEl = document.getElementById('beta_' + i);
+  if (betaEl) betaEl.value = data.downturnBeta;
+  const avgEl = document.getElementById('avgcap_' + i);
+  if (avgEl) avgEl.value = data.avgCapture;
+  const bullEl = document.getElementById('bullcap_' + i);
+  if (bullEl) bullEl.value = data.bullCapture;
+  const incEl = document.getElementById('inctype_' + i);
+  if (incEl) incEl.value = data.incomeType;
+  const accEl = document.getElementById('accrec_' + i);
+  if (accEl) accEl.value = data.accountRec;
+}
 const COLOR_NAMES = ['--c0','--c1','--c2','--c3'];
 const NUM_INSTRUMENTS = 5;
 
@@ -775,7 +841,7 @@ function buildSetupCards() {
         ${i+1}
       </div>
       <div class="row-ticker">
-        <input type="text" id="ticker_${i}" value="${d.ticker}" placeholder="TICKER" maxlength="10" style="text-transform:uppercase" tabindex="${i+1}" oninput="updateRowLabel(${i})">
+        <input type="text" id="ticker_${i}" value="${d.ticker}" placeholder="TICKER" maxlength="10" style="text-transform:uppercase" tabindex="${i+1}" oninput="this.value=this.value.toUpperCase()" onblur="autoFillTicker(${i})">
       </div>
       <div class="row-desc">
         <input type="text" id="name_${i}" value="${d.name}" placeholder="Description (optional)" tabindex="-1">
@@ -1323,13 +1389,13 @@ document.addEventListener('keydown', function(e) {
   const isEnter = e.key === 'Enter';
   if (!isTab && !isEnter) return;
   const i = parseInt(active.id.replace('ticker_', ''));
+  autoFillTicker(i);
   const next = document.getElementById('ticker_' + (i + 1));
   if (next) {
     e.preventDefault();
     next.focus();
     next.select();
   } else if (isEnter) {
-    // Last row — move focus to Run button
     e.preventDefault();
     const runBtn = document.querySelector('.run-btn');
     if (runBtn) runBtn.focus();
