@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Investment Projector</title>
+<title>Investment Projector v4</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,300;0,400;0,500;1,300&family=Cormorant+Garamond:wght@600;700&display=swap" rel="stylesheet">
 <style>
@@ -1440,7 +1440,7 @@ function setScenario(s, btn) {
 
   const descs = {
     down: `${document.getElementById('downturnPct')?.value || 20}% market drop yr 1 — recovery speed adjustable below`,
-    avg:  `Avg market: +${document.getElementById('avgReturn')?.value || 5}%/yr — enter Yield% and ER% per ticker for differentiated lines`,
+    avg:  `Avg market: +${document.getElementById('avgReturn')?.value || 5}%/yr — solid/thick line = income component`,
     bull: `Bull run: +${document.getElementById('bullReturn')?.value || 15}%/yr — upside capture rate is the key differentiator`,
   };
   document.getElementById('scenarioDesc').textContent = descs[s];
