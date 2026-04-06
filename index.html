@@ -1152,53 +1152,44 @@ function buildChart() {
   const labels = ['Now','Yr 1','Yr 2','Yr 3','Yr 4','Yr 5'];
   const recovery = currentScenario === 'down' ? currentRecovery : 'grind';
 
-  // Build data arrays first so we can reference them directly in fill
-  // Each instrument gets: priceVals (spend path) and totalVals (reinvest path)
-  const instData = instruments.map(function(inst) {
+  // One dataset per ticker: total return line
+  // We also store priceVals on the dataset for tooltip access
+  const datasets = instruments.map(function(inst, i) {
     const mults = inst.mults[currentScenario];
     const adjTotal = currentScenario === 'down' ? getRecoveryMultiplier(mults.reinvest, mults.yr1drop, recovery) : mults.reinvest;
     const adjPrice = currentScenario === 'down' ? getRecoveryMultiplier(mults.spend,    mults.yr1drop, recovery) : mults.spend;
-    return {
-      totalVals: buildPath(adjTotal, inst.er, mults.yr1drop, recovery),
-      priceVals: buildPath(adjPrice, inst.er, mults.yr1drop, recovery),
-    };
-  });
-
-  // Build datasets: for each ticker, push Price first then Total
-  // Dataset order: [price0, total0, price1, total1, price2, total2...]
-  // fill: 1 on total means "fill to dataset at index-1" = the price dataset for same ticker
-  const datasets = [];
-  instruments.forEach(function(inst, i) {
+    const totalVals = buildPath(adjTotal, inst.er, mults.yr1drop, recovery);
+    const priceVals = buildPath(adjPrice, inst.er, mults.yr1drop, recovery);
     const col = COLORS[i];
-    const d = instData[i];
 
-    // Price-only line (dashed, thin, no points)
-    datasets.push({
-      label: inst.ticker + ' · Price',
-      data: d.priceVals,
-      borderColor: col + '66',
-      backgroundColor: 'transparent',
-      borderWidth: 1.5,
-      borderDash: [4, 3],
-      fill: false,
-      tension: 0.4,
-      pointRadius: 0,
-      pointHoverRadius: 4,
-    });
-
-    // Total return line — fill between this and the Price line above it
-    const priceIdx = datasets.length - 1; // index of the price dataset just pushed
-    datasets.push({
-      label: inst.ticker + ' · Total',
-      data: d.totalVals,
+    return {
+      label: inst.ticker,
+      data: totalVals,
+      priceData: priceVals,   // stored for tooltip use
       borderColor: col,
-      backgroundColor: col + '40',
-      borderWidth: 2.5,
-      fill: priceIdx,   // fill DOWN to the price line (absolute dataset index)
+      borderWidth: 3,
       tension: 0.4,
-      pointRadius: 4,
-      pointHoverRadius: 6,
-    });
+      pointRadius: 5,
+      pointHoverRadius: 7,
+      pointBackgroundColor: col,
+      fill: false,
+      // Color each segment: income portion (above priceData) solid, price portion hollow
+      segment: {
+        borderColor: function(ctx) { return COLORS[ctx.datasetIndex]; },
+      },
+      // Point style: filled circle where income > 0, hollow where income = 0
+      pointStyle: totalVals.map(function(v, idx) {
+        return (v - priceVals[idx]) > 50 ? 'circle' : 'circle';
+      }),
+      pointBorderColor: col,
+      pointBorderWidth: totalVals.map(function(v, idx) {
+        return (v - priceVals[idx]) > 50 ? 3 : 1.5;
+      }),
+      pointBackgroundColor: totalVals.map(function(v, idx) {
+        // Filled (income present) vs hollow (price only)
+        return (v - priceVals[idx]) > 50 ? col : 'transparent';
+      }),
+    };
   });
 
   if (chart) chart.destroy();
@@ -1214,10 +1205,13 @@ function buildChart() {
             color: '#7a8a99',
             font: { family: 'DM Mono', size: 11 },
             boxWidth: 14, padding: 14, usePointStyle: true,
-            filter: function(item) {
-              // Only show Total lines in legend
-              return item.text.indexOf('Total') !== -1;
-            },
+          },
+          onClick: function(e, legendItem, legend) {
+            // Default toggle behavior - hides/shows the single dataset
+            const idx = legendItem.datasetIndex;
+            const meta = legend.chart.getDatasetMeta(idx);
+            meta.hidden = !meta.hidden;
+            legend.chart.update();
           }
         },
         tooltip: {
@@ -1225,34 +1219,22 @@ function buildChart() {
           titleColor: '#d4dbe3', bodyColor: '#7a8a99',
           titleFont: { family: 'DM Mono', size: 11 }, bodyFont: { family: 'DM Mono', size: 11 },
           itemSort: function(a, b) { return b.parsed.y - a.parsed.y; },
-          filter: function(item) {
-            // Only show Total lines in tooltip
-            return item.dataset.label.indexOf('Total') !== -1;
-          },
           callbacks: {
             label: function(ctx) {
-              const ticker = ctx.dataset.label.replace(' · Total', '');
-              const totalVal = ctx.parsed.y;
-              // Price dataset is always at (dataset index - 1)
-              const priceDsIdx = ctx.datasetIndex - 1;
-              const priceVal = ctx.chart.data.datasets[priceDsIdx]
-                ? ctx.chart.data.datasets[priceDsIdx].data[ctx.dataIndex]
-                : START;
-              const income = Math.max(0, totalVal - priceVal);
+              const totalVal = Math.round(ctx.parsed.y);
+              const priceVal = Math.round(ctx.dataset.priceData[ctx.dataIndex]);
+              const income   = Math.max(0, totalVal - priceVal);
               const totalPct = (((totalVal - START) / START) * 100).toFixed(1);
               const sign = parseFloat(totalPct) >= 0 ? '+' : '';
               return [
-                ' ' + ticker + ': $' + Math.round(totalVal).toLocaleString() + ' (' + sign + totalPct + '%)',
-                '   ├ Price only:  $' + Math.round(priceVal).toLocaleString(),
-                '   └ + Income:   +$' + Math.round(income).toLocaleString(),
+                ' ' + ctx.dataset.label + ': $' + totalVal.toLocaleString() + ' (' + sign + totalPct + '%)',
+                '   ├ Price:   $' + priceVal.toLocaleString(),
+                '   └ Income: +$' + income.toLocaleString(),
               ];
             },
             labelColor: function(ctx) {
-              return {
-                borderColor: ctx.dataset.borderColor,
-                backgroundColor: ctx.dataset.borderColor,
-                borderWidth: 2, borderRadius: 2,
-              };
+              const col = ctx.dataset.borderColor;
+              return { borderColor: col, backgroundColor: col, borderWidth: 2, borderRadius: 2 };
             },
           }
         }
@@ -1261,7 +1243,36 @@ function buildChart() {
         x: { grid: { color: '#1f262d' }, ticks: { color: '#556170', font: { family: 'DM Mono', size: 11 } } },
         y: { grid: { color: '#1f262d' }, ticks: { color: '#556170', font: { family: 'DM Mono', size: 11 }, callback: function(v) { return '$' + v.toLocaleString(); } } }
       }
-    }
+    },
+    plugins: [{
+      // Custom plugin: draw thick colored segments on the line to show income portion
+      id: 'incomeSegments',
+      afterDatasetsDraw: function(chart) {
+        const ctx2 = chart.ctx;
+        chart.data.datasets.forEach(function(ds, di) {
+          if (!ds.priceData) return;
+          const meta = chart.getDatasetMeta(di);
+          if (meta.hidden) return;
+          const col = ds.borderColor;
+          const points = meta.data;
+
+          // Draw thick band between price and total at each x position
+          ctx2.save();
+          for (let i = 0; i < points.length; i++) {
+            const totalY  = points[i].y;
+            const priceY  = chart.scales.y.getPixelForValue(ds.priceData[i]);
+            const incomeH = priceY - totalY; // pixels of income band
+            if (incomeH < 2) continue;
+            const x = points[i].x;
+            const w = 6; // band width in pixels
+            ctx2.fillStyle = col;
+            ctx2.globalAlpha = 0.85;
+            ctx2.fillRect(x - w/2, totalY, w, incomeH);
+          }
+          ctx2.restore();
+        });
+      }
+    }]
   });
 }
 
