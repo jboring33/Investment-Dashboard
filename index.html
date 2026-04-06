@@ -671,7 +671,6 @@ input::placeholder { color: var(--muted); }
 ══════════════════════════════════════════ -->
 <div id="setupScreen">
   <div class="setup-header">
-    <button class="theme-btn" id="themeBtnSetup" onclick="toggleTheme()">☽ Dark</button>
     <h1>Investment Projector</h1>
     <p>5-year scenario modeler · net of fees · reinvest vs. spend</p>
   </div>
@@ -679,6 +678,7 @@ input::placeholder { color: var(--muted); }
   <div class="setup-top-bar">
     <button type="button" class="top-bar-btn" onclick="toggleGlobalVars()">⚙ Global Settings</button>
     <button type="button" class="top-bar-btn danger" onclick="clearTickers()">✕ Clear Tickers</button>
+    <button type="button" class="top-bar-btn" id="themeBtnSetup" onclick="toggleTheme()" style="margin-left:auto">☽ Dark</button>
   </div>
 
   <div class="global-settings">
