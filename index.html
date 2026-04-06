@@ -1152,8 +1152,6 @@ function buildChart() {
   const labels = ['Now','Yr 1','Yr 2','Yr 3','Yr 4','Yr 5'];
   const recovery = currentScenario === 'down' ? currentRecovery : 'grind';
 
-  // One dataset per ticker: total return line
-  // We also store priceVals on the dataset for tooltip access
   const datasets = instruments.map(function(inst, i) {
     const mults = inst.mults[currentScenario];
     const adjTotal = currentScenario === 'down' ? getRecoveryMultiplier(mults.reinvest, mults.yr1drop, recovery) : mults.reinvest;
@@ -1162,33 +1160,54 @@ function buildChart() {
     const priceVals = buildPath(adjPrice, inst.er, mults.yr1drop, recovery);
     const col = COLORS[i];
 
+    // Income ratio at each point: 0 = all price, 1 = heavy income
+    const incomeRatio = totalVals.map(function(v, idx) {
+      if (v <= START || v <= priceVals[idx]) return 0;
+      return Math.min(1, (v - priceVals[idx]) / (v - START));
+    });
+
     return {
       label: inst.ticker,
       data: totalVals,
-      priceData: priceVals,   // stored for tooltip use
+      priceData: priceVals,
+      incomeRatio: incomeRatio,
       borderColor: col,
+      // Line width varies: thick where income is high
       borderWidth: 3,
       tension: 0.4,
-      pointRadius: 5,
-      pointHoverRadius: 7,
-      pointBackgroundColor: col,
       fill: false,
-      // Color each segment: income portion (above priceData) solid, price portion hollow
-      segment: {
-        borderColor: function(ctx) { return COLORS[ctx.datasetIndex]; },
-      },
-      // Point style: filled circle where income > 0, hollow where income = 0
-      pointStyle: totalVals.map(function(v, idx) {
-        return (v - priceVals[idx]) > 50 ? 'circle' : 'circle';
+      // Per-point: filled dot where income present, hollow where price-only
+      pointRadius: totalVals.map(function(v, idx) { return 5; }),
+      pointHoverRadius: 7,
+      pointBackgroundColor: totalVals.map(function(v, idx) {
+        return incomeRatio[idx] > 0.05 ? col : 'transparent';
       }),
       pointBorderColor: col,
-      pointBorderWidth: totalVals.map(function(v, idx) {
-        return (v - priceVals[idx]) > 50 ? 3 : 1.5;
-      }),
-      pointBackgroundColor: totalVals.map(function(v, idx) {
-        // Filled (income present) vs hollow (price only)
-        return (v - priceVals[idx]) > 50 ? col : 'transparent';
-      }),
+      pointBorderWidth: 2,
+      // Segment styling: solid+thick for income portion, dashed+thin for price-only
+      segment: {
+        borderColor: function(ctx) {
+          // Average income ratio across the two endpoints of this segment
+          const r0 = incomeRatio[ctx.p0DataIndex] || 0;
+          const r1 = incomeRatio[ctx.p1DataIndex] || 0;
+          const r = (r0 + r1) / 2;
+          if (r < 0.05) return col + '55'; // faded = price only
+          return col; // full color = income present
+        },
+        borderWidth: function(ctx) {
+          const r0 = incomeRatio[ctx.p0DataIndex] || 0;
+          const r1 = incomeRatio[ctx.p1DataIndex] || 0;
+          const r = (r0 + r1) / 2;
+          // Thicker line = more income
+          return r < 0.05 ? 1.5 : 1.5 + r * 4;
+        },
+        borderDash: function(ctx) {
+          const r0 = incomeRatio[ctx.p0DataIndex] || 0;
+          const r1 = incomeRatio[ctx.p1DataIndex] || 0;
+          const r = (r0 + r1) / 2;
+          return r < 0.05 ? [4, 3] : []; // dashed = price only, solid = income
+        },
+      },
     };
   });
 
@@ -1205,9 +1224,21 @@ function buildChart() {
             color: '#7a8a99',
             font: { family: 'DM Mono', size: 11 },
             boxWidth: 14, padding: 14, usePointStyle: true,
+            generateLabels: function(chart) {
+              return chart.data.datasets.map(function(ds, i) {
+                const meta = chart.getDatasetMeta(i);
+                return {
+                  text: ds.label,
+                  fillStyle: ds.borderColor,
+                  strokeStyle: ds.borderColor,
+                  lineWidth: 2,
+                  hidden: meta.hidden,
+                  datasetIndex: i,
+                };
+              });
+            }
           },
           onClick: function(e, legendItem, legend) {
-            // Default toggle behavior - hides/shows the single dataset
             const idx = legendItem.datasetIndex;
             const meta = legend.chart.getDatasetMeta(idx);
             meta.hidden = !meta.hidden;
@@ -1243,36 +1274,7 @@ function buildChart() {
         x: { grid: { color: '#1f262d' }, ticks: { color: '#556170', font: { family: 'DM Mono', size: 11 } } },
         y: { grid: { color: '#1f262d' }, ticks: { color: '#556170', font: { family: 'DM Mono', size: 11 }, callback: function(v) { return '$' + v.toLocaleString(); } } }
       }
-    },
-    plugins: [{
-      // Custom plugin: draw thick colored segments on the line to show income portion
-      id: 'incomeSegments',
-      afterDatasetsDraw: function(chart) {
-        const ctx2 = chart.ctx;
-        chart.data.datasets.forEach(function(ds, di) {
-          if (!ds.priceData) return;
-          const meta = chart.getDatasetMeta(di);
-          if (meta.hidden) return;
-          const col = ds.borderColor;
-          const points = meta.data;
-
-          // Draw thick band between price and total at each x position
-          ctx2.save();
-          for (let i = 0; i < points.length; i++) {
-            const totalY  = points[i].y;
-            const priceY  = chart.scales.y.getPixelForValue(ds.priceData[i]);
-            const incomeH = priceY - totalY; // pixels of income band
-            if (incomeH < 2) continue;
-            const x = points[i].x;
-            const w = 6; // band width in pixels
-            ctx2.fillStyle = col;
-            ctx2.globalAlpha = 0.85;
-            ctx2.fillRect(x - w/2, totalY, w, incomeH);
-          }
-          ctx2.restore();
-        });
-      }
-    }]
+    }
   });
 }
 
