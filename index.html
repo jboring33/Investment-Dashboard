@@ -1025,18 +1025,24 @@ let chart;
 // TICKER LOOKUP (Yahoo Finance + local DB)
 // ════════════════════════════════════════════
 function getTickerList() {
+  // Start with base DB
+  var merged = Object.assign({}, TICKER_DB);
+  // Apply saved session edits
   try {
-    var edits = JSON.parse(sessionStorage.getItem('etf_edits') || 'null');
-    if (edits) {
-      var merged = Object.assign({}, TICKER_DB);
-      Object.keys(edits).forEach(function(t) {
-        if (edits[t] === null) delete merged[t];
-        else merged[t] = edits[t];
+    var saved = JSON.parse(sessionStorage.getItem('etf_edits') || 'null');
+    if (saved) {
+      Object.keys(saved).forEach(function(t) {
+        if (saved[t] === null) delete merged[t];
+        else merged[t] = saved[t];
       });
-      return merged;
     }
   } catch(e) {}
-  return TICKER_DB;
+  // Apply in-memory pending edits (not yet saved)
+  Object.keys(_etfEdits).forEach(function(t) {
+    if (_etfEdits[t] === null) delete merged[t];
+    else merged[t] = _etfEdits[t];
+  });
+  return merged;
 }
 
 async function yfetch(symbol) {
