@@ -590,6 +590,147 @@ input::placeholder { color: var(--muted); }
 }
 
 /* ── INFO DRAWER ── */
+/* ── AUTOCOMPLETE ── */
+.autocomplete-wrap { position: relative; width: 100%; }
+.autocomplete-list {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background: var(--surface);
+  border: 1px solid var(--border2);
+  border-radius: 6px;
+  z-index: 1000;
+  max-height: 220px;
+  overflow-y: auto;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+  display: none;
+}
+.autocomplete-list.open { display: block; }
+.ac-item {
+  padding: 7px 12px;
+  cursor: pointer;
+  font-size: 0.72rem;
+  display: flex;
+  gap: 10px;
+  align-items: baseline;
+  border-bottom: 1px solid var(--border);
+}
+.ac-item:last-child { border-bottom: none; }
+.ac-item:hover, .ac-item.selected { background: var(--surface2); }
+.ac-ticker { font-weight: 500; color: var(--accent); min-width: 52px; }
+.ac-name   { color: var(--muted); font-size: 0.65rem; flex: 1; }
+.ac-yield  { color: var(--text); font-size: 0.65rem; white-space: nowrap; }
+
+/* ── ETF MANAGER MODAL ── */
+.modal-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.45);
+  z-index: 2000;
+  align-items: center;
+  justify-content: center;
+}
+.modal-overlay.open { display: flex; }
+.etf-modal {
+  background: var(--surface);
+  border: 1px solid var(--border2);
+  border-radius: 12px;
+  width: min(720px, 95vw);
+  max-height: 85vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.etf-modal-head {
+  padding: 18px 24px 14px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.etf-modal-head h2 {
+  font-family: "Cormorant Garamond", serif;
+  font-size: 1.2rem;
+  color: var(--accent);
+  flex: 1;
+}
+.etf-modal-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px 24px;
+}
+.etf-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.68rem;
+}
+.etf-table th {
+  text-align: left;
+  color: var(--muted);
+  font-size: 0.58rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--border2);
+}
+.etf-table td {
+  padding: 5px 8px;
+  border-bottom: 1px solid var(--border);
+  vertical-align: middle;
+}
+.etf-table tr:last-child td { border-bottom: none; }
+.etf-table input, .etf-table select {
+  width: 100%;
+  background: transparent;
+  border: none;
+  color: var(--text);
+  font-family: "DM Mono", monospace;
+  font-size: 0.68rem;
+  padding: 2px 4px;
+  outline: none;
+  border-radius: 3px;
+}
+.etf-table input:focus, .etf-table select:focus {
+  background: var(--surface2);
+}
+.etf-table .ticker-cell { color: var(--accent); font-weight: 500; }
+.etf-del-btn {
+  background: none;
+  border: none;
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 0.9rem;
+  padding: 2px 6px;
+  border-radius: 3px;
+}
+.etf-del-btn:hover { color: var(--danger); background: var(--surface2); }
+.etf-modal-foot {
+  padding: 14px 24px;
+  border-top: 1px solid var(--border);
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+.etf-add-row {
+  display: grid;
+  grid-template-columns: 70px 1fr 60px 50px auto;
+  gap: 6px;
+  align-items: center;
+  padding: 10px 0 4px;
+}
+.etf-add-row input, .etf-add-row select {
+  background: var(--surface2);
+  border: 1px solid var(--border2);
+  border-radius: 4px;
+  padding: 5px 8px;
+  font-family: "DM Mono", monospace;
+  font-size: 0.68rem;
+  color: var(--text);
+  outline: none;
+}
+
 .vars-toggle {
   display: block;
   width: 100%;
@@ -680,6 +821,7 @@ input::placeholder { color: var(--muted); }
 
   <div class="setup-top-bar">
     <button type="button" class="top-bar-btn" onclick="toggleGlobalVars()">⚙ Global Settings</button>
+    <button type="button" class="top-bar-btn" onclick="openEtfManager()">☰ ETF List</button>
     <button type="button" class="top-bar-btn danger" onclick="clearTickers()">✕ Clear Tickers</button>
     <button type="button" class="top-bar-btn" id="themeBtnSetup" onclick="toggleTheme()" style="margin-left:auto">☽ Dark</button>
   </div>
@@ -711,6 +853,38 @@ input::placeholder { color: var(--muted); }
   <div class="setup-grid" id="instrumentCards"></div>
 
   <button class="run-btn" onclick="runProjection()">Run Projection →</button>
+</div>
+
+<!-- ETF Manager Modal -->
+<div class="modal-overlay" id="etfModal">
+  <div class="etf-modal">
+    <div class="etf-modal-head">
+      <h2>ETF / Ticker Library</h2>
+      <button class="top-bar-btn" onclick="closeEtfManager()">✕ Close</button>
+    </div>
+    <div class="etf-modal-body">
+      <div class="etf-add-row">
+        <input id="newTicker"  type="text"   placeholder="TICKER" maxlength="10" style="text-transform:uppercase">
+        <input id="newName"    type="text"   placeholder="Fund name">
+        <input id="newYield"   type="number" placeholder="Yield%" min="0" max="100" step="0.1">
+        <input id="newEr"      type="number" placeholder="ER%" min="0" max="5" step="0.01">
+        <button class="run-btn" style="padding:6px 14px;font-size:0.7rem" onclick="addEtfRow()">+ Add</button>
+      </div>
+      <table class="etf-table" id="etfTable">
+        <thead>
+          <tr>
+            <th>Ticker</th><th>Name</th><th>Yield%</th><th>ER%</th>
+            <th>Beta</th><th>Avg Cap%</th><th>Bull Cap%</th><th>Income</th><th>Account</th><th></th>
+          </tr>
+        </thead>
+        <tbody id="etfTableBody"></tbody>
+      </table>
+    </div>
+    <div class="etf-modal-foot">
+      <button class="run-btn" style="padding:8px 20px;font-size:0.72rem" onclick="saveEtfList()">Save Changes</button>
+      <span style="font-size:0.62rem;color:var(--muted)">Changes are saved to this browser session</span>
+    </div>
+  </div>
 </div>
 
 <!-- ══════════════════════════════════════════
@@ -785,6 +959,7 @@ const TICKER_DB = {
   'QYLD':  { name: 'Global X Nasdaq 100 Covered Call',  yield: 11,   er: 0.60, downturnBeta: 0.90, avgCapture: 60,  bullCapture: 30,  incomeType: 'return',    accountRec: 'brokerage'},
   'XYLD':  { name: 'Global X S&P 500 Covered Call',     yield: 9.5,  er: 0.60, downturnBeta: 0.80, avgCapture: 60,  bullCapture: 35,  incomeType: 'return',    accountRec: 'brokerage'},
   'RYLD':  { name: 'Global X Russell 2000 Covered Call',yield: 12,   er: 0.60, downturnBeta: 0.95, avgCapture: 55,  bullCapture: 30,  incomeType: 'return',    accountRec: 'brokerage'},
+  'RSP':   { name: 'Invesco S&P 500 Equal Weight',      yield: 1.6,  er: 0.20, downturnBeta: 0.95, avgCapture: 98,  bullCapture: 95,  incomeType: 'qualified', accountRec: 'either' },
   'SCHD':  { name: 'Schwab US Dividend Equity',         yield: 3.5,  er: 0.06, downturnBeta: 0.80, avgCapture: 90,  bullCapture: 80,  incomeType: 'qualified', accountRec: 'either' },
   'VYM':   { name: 'Vanguard High Dividend Yield',      yield: 2.9,  er: 0.06, downturnBeta: 0.82, avgCapture: 88,  bullCapture: 78,  incomeType: 'qualified', accountRec: 'either' },
   'DVY':   { name: 'iShares Select Dividend',           yield: 3.8,  er: 0.38, downturnBeta: 0.85, avgCapture: 82,  bullCapture: 72,  incomeType: 'qualified', accountRec: 'either' },
@@ -806,6 +981,12 @@ const TICKER_DB = {
   'FEPI':  { name: 'REX FANG & Innovation Equity IP',   yield: 25,   er: 0.65, downturnBeta: 1.05, avgCapture: 75,  bullCapture: 45,  incomeType: 'mixed',     accountRec: 'roth'   },
   'GPIQ':  { name: 'Goldman Sachs Nasdaq-100 CC',       yield: 12,   er: 0.29, downturnBeta: 0.95, avgCapture: 85,  bullCapture: 65,  incomeType: 'ordinary',  accountRec: 'roth'   },
   'GPIX':  { name: 'Goldman Sachs S&P 500 CC',          yield: 10,   er: 0.29, downturnBeta: 0.85, avgCapture: 85,  bullCapture: 65,  incomeType: 'ordinary',  accountRec: 'roth'   },
+  'AGG':   { name: 'iShares Core US Aggregate Bond',    yield: 3.8,  er: 0.03, downturnBeta: 0.10, avgCapture: 20,  bullCapture: 10,  incomeType: 'ordinary',  accountRec: 'ira'    },
+  'BND':   { name: 'Vanguard Total Bond Market',         yield: 3.7,  er: 0.03, downturnBeta: 0.10, avgCapture: 20,  bullCapture: 10,  incomeType: 'ordinary',  accountRec: 'ira'    },
+  'NUSI':  { name: 'Nationwide Nasdaq-100 Risk-Managed', yield: 7.5,  er: 0.68, downturnBeta: 0.60, avgCapture: 65,  bullCapture: 40,  incomeType: 'mixed',     accountRec: 'roth'   },
+  'PFFD':  { name: 'Global X US Preferred ETF',          yield: 6.5,  er: 0.23, downturnBeta: 0.60, avgCapture: 50,  bullCapture: 35,  incomeType: 'ordinary',  accountRec: 'roth'   },
+  'O':     { name: 'Realty Income Corp',                 yield: 5.6,  er: 0,    downturnBeta: 0.70, avgCapture: 60,  bullCapture: 45,  incomeType: 'ordinary',  accountRec: 'roth'   },
+  'MAIN':  { name: 'Main Street Capital',                yield: 6.8,  er: 0,    downturnBeta: 0.80, avgCapture: 75,  bullCapture: 60,  incomeType: 'ordinary',  accountRec: 'roth'   },
 };
 
 /* ── Yahoo Finance fetch via CORS proxy (same method as Market Bottom Dashboard) ── */
@@ -1062,6 +1243,1430 @@ function buildSetupCards() {
 function updateRowLabel(i) {
   // nothing needed — ticker updates live via input binding
 }
+
+// ── AUTOCOMPLETE ──────────────────────────────────────────
+function getTickerList() {
+  // Merge built-in TICKER_DB with any session edits
+  try {
+    const edits = JSON.parse(sessionStorage.getItem('etf_edits') || 'null');
+    if (edits) return Object.assign({}, TICKER_DB, edits);
+  } catch(e) {}
+  return TICKER_DB;
+}
+
+!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Investment Projector v4</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,300;0,400;0,500;1,300&family=Cormorant+Garamond:wght@600;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --accent: #c8a96e;
+  --accent2: #8fb8d4;
+  --danger: #e05c5c;
+  --success: #5cb88a;
+}
+
+/* Light mode (default) */
+body {
+  --bg: #f4f5f7;
+  --surface: #ffffff;
+  --surface2: #eef0f3;
+  --border: rgba(0,0,0,0.08);
+  --border2: rgba(0,0,0,0.15);
+  --text: #111318;
+  --muted: #5a6170;
+}
+
+/* Dark mode */
+body.dark-mode {
+  --bg: #080a0d;
+  --surface: #0f1215;
+  --surface2: #161b20;
+  --border: rgba(255,255,255,0.07);
+  --border2: rgba(255,255,255,0.15);
+  --text: #d4dbe3;
+  --muted: #556170;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'DM Mono', monospace;
+  min-height: 100vh;
+  padding: 0;
+  transition: background 0.2s, color 0.2s;
+}
+
+/* ── SETUP SCREEN ── */
+#setupScreen {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 24px;
+}
+
+.setup-header {
+  text-align: center;
+  margin-bottom: 48px;
+}
+
+.setup-header h1 {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: clamp(2rem, 5vw, 3.2rem);
+  font-weight: 700;
+  color: var(--accent);
+  letter-spacing: 0.02em;
+  line-height: 1.1;
+  margin-bottom: 8px;
+}
+
+.setup-header p {
+  font-size: 0.72rem;
+  color: var(--muted);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.setup-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  width: 100%;
+  max-width: 960px;
+  margin-bottom: 32px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.instrument-row {
+  display: grid;
+  grid-template-columns: 36px 110px 1fr 70px 60px auto;
+  align-items: center;
+  gap: 0;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+  transition: background 0.15s;
+}
+.instrument-row:last-child { border-bottom: none; }
+.instrument-row:nth-child(even) { background: var(--surface2); }
+.instrument-row:focus-within { background: #0d1318; }
+
+.row-num {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 12px 6px;
+  font-size: 0.6rem;
+  color: var(--muted);
+  flex-direction: column;
+  border-right: 1px solid var(--border);
+  height: 100%;
+}
+
+.row-ticker {
+  padding: 8px 10px;
+  border-right: 1px solid var(--border);
+}
+.row-ticker input {
+  width: 100%;
+  background: transparent;
+  border: none;
+  color: var(--text);
+  font-family: 'DM Mono', monospace;
+  font-size: 0.85rem;
+  font-weight: 500;
+  letter-spacing: 0.05em;
+  outline: none;
+  padding: 2px 0;
+}
+.row-ticker input::placeholder { color: var(--border2); }
+
+.row-desc {
+  padding: 8px 12px;
+  border-right: 1px solid var(--border);
+}
+.row-desc input {
+  width: 100%;
+  background: transparent;
+  border: none;
+  color: var(--muted);
+  font-family: 'DM Mono', monospace;
+  font-size: 0.72rem;
+  outline: none;
+  padding: 2px 0;
+}
+.row-desc input::placeholder { color: var(--border); }
+
+.row-yield, .row-er {
+  padding: 4px 6px;
+  border-right: 1px solid var(--border);
+}
+.row-yield input, .row-er input {
+  width: 100%;
+  background: transparent;
+  border: none;
+  color: var(--muted);
+  font-family: 'DM Mono', monospace;
+  font-size: 0.75rem;
+  outline: none;
+  padding: 2px 0;
+  text-align: right;
+}
+.row-yield input:focus, .row-er input:focus { color: var(--text); }
+
+.row-action {
+  padding: 8px 10px;
+  display: flex;
+  align-items: center;
+}
+
+.row-vars-btn {
+  margin-top: 0 !important;
+  padding: 4px 10px !important;
+  font-size: 0.6rem !important;
+  width: auto !important;
+  white-space: nowrap;
+}
+
+.vars-drawer.row-drawer {
+  grid-column: 1 / -1;
+  border-top: 1px solid var(--border);
+}
+
+.drawer-inner {
+  padding: 14px 16px;
+  background: var(--surface2);
+}
+
+.drawer-inner .field-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: 10px;
+  margin-bottom: 0;
+}
+
+/* Table header row */
+.instrument-row-header {
+  display: grid;
+  grid-template-columns: 36px 110px 1fr 70px 60px auto;
+  gap: 0;
+  background: var(--bg);
+  border-bottom: 1px solid var(--border2);
+  padding: 6px 0;
+}
+.instrument-row-header span {
+  font-size: 0.55rem;
+  color: var(--muted);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  padding: 0 10px;
+}
+.instrument-row-header span:first-child { text-align: center; padding: 0 6px; }
+
+.color-dot {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  display: inline-block;
+  flex-shrink: 0;
+}
+
+.field-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+.field-row.full { grid-template-columns: 1fr; }
+
+.field label {
+  display: block;
+  font-size: 0.58rem;
+  color: var(--muted);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  margin-bottom: 5px;
+}
+
+.field input, .field select {
+  width: 100%;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text);
+  font-family: 'DM Mono', monospace;
+  font-size: 0.82rem;
+  padding: 8px 10px;
+  outline: none;
+  transition: border-color 0.15s;
+}
+.field input:focus, .field select:focus { border-color: var(--accent); }
+.field input::placeholder { color: var(--muted); }
+
+.field .hint {
+  font-size: 0.58rem;
+  color: var(--muted);
+  margin-top: 4px;
+  font-style: italic;
+}
+
+.global-settings {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 24px;
+  width: 100%;
+  max-width: 960px;
+  margin-bottom: 28px;
+}
+
+.global-settings-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  cursor: pointer;
+}
+
+.global-settings h3 {
+  font-size: 0.65rem;
+  color: var(--muted);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  margin-bottom: 16px;
+}
+
+.global-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 12px;
+}
+
+.setup-top-bar {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  margin-bottom: 14px;
+  width: 100%;
+  max-width: 960px;
+}
+
+.top-bar-btn {
+  background: var(--surface);
+  border: 1px solid var(--border2);
+  color: var(--muted);
+  border-radius: 6px;
+  font-family: 'DM Mono', monospace;
+  font-size: 0.68rem;
+  letter-spacing: 0.08em;
+  padding: 8px 20px;
+  cursor: pointer;
+  transition: all 0.15s;
+  text-transform: uppercase;
+}
+.top-bar-btn:hover { border-color: var(--accent); color: var(--accent); }
+.top-bar-btn.danger:hover { border-color: var(--danger); color: var(--danger); }
+
+.clear-btn {
+  background: transparent;
+  border: 1px solid var(--border2);
+  color: var(--muted);
+  border-radius: 8px;
+  font-family: 'DM Mono', monospace;
+  font-size: 0.72rem;
+  letter-spacing: 0.08em;
+  padding: 14px 24px;
+  cursor: pointer;
+  transition: all 0.2s;
+  text-transform: uppercase;
+}
+.clear-btn:hover { border-color: var(--danger); color: var(--danger); }
+
+.run-btn {
+  background: var(--accent);
+  color: #080a0d;
+  border: none;
+  border-radius: 8px;
+  font-family: 'DM Mono', monospace;
+  font-size: 0.82rem;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  padding: 14px 48px;
+  cursor: pointer;
+  transition: all 0.2s;
+  text-transform: uppercase;
+}
+.run-btn:hover { background: #d9bc87; transform: translateY(-1px); box-shadow: 0 8px 24px rgba(200,169,110,0.2); }
+
+/* ── RESULTS SCREEN ── */
+#resultsScreen { display: none; padding: 28px 24px; max-width: 1100px; margin: 0 auto; }
+
+.results-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 24px;
+}
+
+.results-header h1 {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: clamp(1.4rem, 3vw, 2rem);
+  color: var(--accent);
+  font-weight: 700;
+}
+
+.results-header .meta {
+  font-size: 0.65rem;
+  color: var(--muted);
+  margin-top: 4px;
+  letter-spacing: 0.08em;
+}
+
+.back-btn {
+  background: var(--surface);
+  border: 1px solid var(--border2);
+  color: var(--muted);
+  border-radius: 6px;
+  font-family: 'DM Mono', monospace;
+  font-size: 0.68rem;
+  padding: 8px 16px;
+  cursor: pointer;
+  transition: all 0.15s;
+  letter-spacing: 0.06em;
+}
+.back-btn:hover { color: var(--text); border-color: var(--accent); }
+
+.controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 24px;
+}
+
+.control-group { display: flex; flex-direction: column; gap: 5px; }
+
+.control-group label {
+  font-size: 0.6rem;
+  color: var(--muted);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.btn-group {
+  display: flex;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.btn {
+  background: var(--surface);
+  color: var(--muted);
+  border: none;
+  border-right: 1px solid var(--border);
+  padding: 7px 14px;
+  font-family: 'DM Mono', monospace;
+  font-size: 0.68rem;
+  cursor: pointer;
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+.btn:last-child { border-right: none; }
+.btn:hover { background: var(--border); color: var(--text); }
+.btn.active { background: var(--accent); color: #080a0d; font-weight: 500; }
+
+#recoveryGroup { display: flex; }
+
+.chart-wrap {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 20px 24px;
+  margin-bottom: 20px;
+}
+
+.chart-label {
+  font-size: 0.62rem;
+  color: var(--muted);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  margin-bottom: 4px;
+}
+
+.chart-sub {
+  font-size: 0.68rem;
+  color: var(--accent);
+  margin-bottom: 16px;
+}
+
+canvas { max-height: 360px; }
+
+.cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 14px;
+  margin-bottom: 20px;
+}
+
+.result-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 18px;
+  position: relative;
+}
+
+.result-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 2px;
+}
+
+.ticker-label {
+  font-size: 0.62rem;
+  letter-spacing: 0.15em;
+  color: var(--muted);
+  text-transform: uppercase;
+  margin-bottom: 12px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.ticker-name { font-size: 1rem; color: var(--text); font-weight: 500; margin-bottom: 2px; }
+
+.vals-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.val-block .vl { font-size: 0.55rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; }
+.val-block .vn { font-size: 1rem; font-weight: 500; margin-top: 2px; }
+.val-block .vs { font-size: 0.6rem; color: var(--muted); margin-top: 1px; }
+
+.divider { height: 1px; background: var(--border); margin: 12px 0; }
+
+.bottom-vals { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+
+.note-box {
+  background: var(--surface2);
+  border: 1px solid #5a2a10;
+  border-radius: 8px;
+  padding: 12px 16px;
+  font-size: 0.67rem;
+  color: #e08c5c;
+  line-height: 1.7;
+  margin-bottom: 20px;
+  grid-column: 1 / -1;
+}
+
+.tax-section {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 20px 24px;
+  margin-bottom: 20px;
+}
+
+.tax-section h3 {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 1.1rem;
+  color: var(--accent);
+  margin-bottom: 14px;
+}
+
+.tax-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 16px;
+}
+
+.tax-item .tax-ticker { font-size: 0.68rem; color: var(--accent); letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 5px; }
+.tax-item .tax-rec { font-size: 0.78rem; margin-bottom: 5px; }
+.tax-item .tax-desc { font-size: 0.64rem; color: var(--muted); line-height: 1.6; }
+
+.pill {
+  display: inline-block;
+  font-size: 0.56rem;
+  padding: 2px 7px;
+  border-radius: 3px;
+  margin: 2px 2px 0 0;
+}
+.pill.best  { background: rgba(92,184,138,0.15); color: var(--success); }
+.pill.mid   { background: rgba(143,184,212,0.15); color: var(--accent2); }
+.pill.worst { background: rgba(224,92,92,0.15); color: var(--danger); }
+
+.theme-btn {
+  position: absolute;
+  top: 20px;
+  right: 24px;
+  background: transparent;
+  border: 1px solid var(--border2);
+  color: var(--muted);
+  border-radius: 6px;
+  font-family: 'DM Mono', monospace;
+  font-size: 0.65rem;
+  padding: 5px 12px;
+  cursor: pointer;
+  transition: all 0.15s;
+  letter-spacing: 0.08em;
+}
+.theme-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+/* Inputs and selects adapt to theme */
+input[type="text"], input[type="number"], select {
+  background: var(--surface2);
+  color: var(--text);
+  border: 1px solid var(--border2);
+}
+input::placeholder { color: var(--muted); }
+
+.footer-note {
+  font-size: 0.6rem;
+  color: var(--muted);
+  text-align: center;
+  padding: 20px 0 8px;
+  line-height: 1.8;
+}
+
+/* ── INFO DRAWER ── */
+/* ── AUTOCOMPLETE ── */
+.autocomplete-wrap { position: relative; width: 100%; }
+.autocomplete-list {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background: var(--surface);
+  border: 1px solid var(--border2);
+  border-radius: 6px;
+  z-index: 1000;
+  max-height: 220px;
+  overflow-y: auto;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+  display: none;
+}
+.autocomplete-list.open { display: block; }
+.ac-item {
+  padding: 7px 12px;
+  cursor: pointer;
+  font-size: 0.72rem;
+  display: flex;
+  gap: 10px;
+  align-items: baseline;
+  border-bottom: 1px solid var(--border);
+}
+.ac-item:last-child { border-bottom: none; }
+.ac-item:hover, .ac-item.selected { background: var(--surface2); }
+.ac-ticker { font-weight: 500; color: var(--accent); min-width: 52px; }
+.ac-name   { color: var(--muted); font-size: 0.65rem; flex: 1; }
+.ac-yield  { color: var(--text); font-size: 0.65rem; white-space: nowrap; }
+
+/* ── ETF MANAGER MODAL ── */
+.modal-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.45);
+  z-index: 2000;
+  align-items: center;
+  justify-content: center;
+}
+.modal-overlay.open { display: flex; }
+.etf-modal {
+  background: var(--surface);
+  border: 1px solid var(--border2);
+  border-radius: 12px;
+  width: min(720px, 95vw);
+  max-height: 85vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.etf-modal-head {
+  padding: 18px 24px 14px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.etf-modal-head h2 {
+  font-family: "Cormorant Garamond", serif;
+  font-size: 1.2rem;
+  color: var(--accent);
+  flex: 1;
+}
+.etf-modal-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px 24px;
+}
+.etf-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.68rem;
+}
+.etf-table th {
+  text-align: left;
+  color: var(--muted);
+  font-size: 0.58rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--border2);
+}
+.etf-table td {
+  padding: 5px 8px;
+  border-bottom: 1px solid var(--border);
+  vertical-align: middle;
+}
+.etf-table tr:last-child td { border-bottom: none; }
+.etf-table input, .etf-table select {
+  width: 100%;
+  background: transparent;
+  border: none;
+  color: var(--text);
+  font-family: "DM Mono", monospace;
+  font-size: 0.68rem;
+  padding: 2px 4px;
+  outline: none;
+  border-radius: 3px;
+}
+.etf-table input:focus, .etf-table select:focus {
+  background: var(--surface2);
+}
+.etf-table .ticker-cell { color: var(--accent); font-weight: 500; }
+.etf-del-btn {
+  background: none;
+  border: none;
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 0.9rem;
+  padding: 2px 6px;
+  border-radius: 3px;
+}
+.etf-del-btn:hover { color: var(--danger); background: var(--surface2); }
+.etf-modal-foot {
+  padding: 14px 24px;
+  border-top: 1px solid var(--border);
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+.etf-add-row {
+  display: grid;
+  grid-template-columns: 70px 1fr 60px 50px auto;
+  gap: 6px;
+  align-items: center;
+  padding: 10px 0 4px;
+}
+.etf-add-row input, .etf-add-row select {
+  background: var(--surface2);
+  border: 1px solid var(--border2);
+  border-radius: 4px;
+  padding: 5px 8px;
+  font-family: "DM Mono", monospace;
+  font-size: 0.68rem;
+  color: var(--text);
+  outline: none;
+}
+
+.vars-toggle {
+  display: block;
+  width: 100%;
+  background: transparent;
+  border: 1px solid var(--border2);
+  color: var(--muted);
+  border-radius: 4px;
+  font-family: 'DM Mono', monospace;
+  font-size: 0.65rem;
+  letter-spacing: 0.1em;
+  padding: 6px 10px;
+  cursor: pointer;
+  text-align: left;
+  margin-top: 12px;
+  transition: all 0.15s;
+}
+.vars-toggle:hover { border-color: var(--accent); color: var(--accent); }
+.vars-toggle.open  { border-color: var(--accent); color: var(--accent); }
+
+.vars-drawer {
+  display: none;
+  margin-top: 12px;
+}
+.vars-drawer.open { display: block; }
+
+.info-toggle {
+  display: block !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  width: 100%;
+  background: #c8a96e !important;
+  border: 2px solid #c8a96e;
+  color: #080a0d !important;
+  border-radius: 4px;
+  font-family: 'DM Mono', monospace;
+  font-size: 0.72rem;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  padding: 8px 12px;
+  cursor: pointer;
+  text-transform: uppercase;
+  text-align: center;
+  margin-top: 14px;
+}
+.info-toggle:hover { background: #d9bc87 !important; }
+.info-toggle.open  { background: #d9bc87 !important; }
+
+.info-drawer {
+  display: none;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+  animation: drawerIn 0.18s ease;
+}
+.info-drawer.open { display: block; }
+
+@keyframes drawerIn {
+  from { opacity: 0; transform: translateY(-4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.info-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px 12px;
+  margin-bottom: 2px;
+}
+
+.info-item .il { font-size: 0.55rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; }
+.info-item .iv { font-size: 0.78rem; color: var(--text); margin-top: 2px; }
+
+.info-bar-wrap { margin-top: 8px; }
+.info-bar-label { font-size: 0.55rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 4px; display: flex; justify-content: space-between; }
+.info-bar-track { background: var(--border); border-radius: 3px; height: 5px; overflow: hidden; }
+.info-bar-fill  { height: 100%; border-radius: 3px; transition: width 0.4s ease; }
+</style>
+</head>
+<body>
+
+<!-- ══════════════════════════════════════════
+     SETUP SCREEN
+══════════════════════════════════════════ -->
+<div id="setupScreen">
+  <div class="setup-header">
+    <h1>Investment Projector</h1>
+    <p>5-year scenario modeler · net of fees · reinvest vs. spend</p>
+  </div>
+
+  <div class="setup-top-bar">
+    <button type="button" class="top-bar-btn" onclick="toggleGlobalVars()">⚙ Global Settings</button>
+    <button type="button" class="top-bar-btn" onclick="openEtfManager()">☰ ETF List</button>
+    <button type="button" class="top-bar-btn danger" onclick="clearTickers()">✕ Clear Tickers</button>
+    <button type="button" class="top-bar-btn" id="themeBtnSetup" onclick="toggleTheme()" style="margin-left:auto">☽ Dark</button>
+  </div>
+
+  <div class="global-settings">
+    <div class="vars-drawer" id="globalDrawer">
+      <div class="global-grid">
+        <div class="field">
+          <label>Starting Amount ($)</label>
+          <input type="number" id="startAmount" value="10000" min="100" step="100">
+        </div>
+        <div class="field">
+          <label>Downturn — Market Drop (%)</label>
+          <input type="number" id="downturnPct" value="20" min="1" max="80" step="1">
+          <div class="hint">Applied to both correlated markets yr 1</div>
+        </div>
+        <div class="field">
+          <label>Avg Scenario — Annual Return (%)</label>
+          <input type="number" id="avgReturn" value="5" min="1" max="30" step="0.5">
+        </div>
+        <div class="field">
+          <label>Bull Scenario — Annual Return (%)</label>
+          <input type="number" id="bullReturn" value="15" min="1" max="50" step="0.5">
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="setup-grid" id="instrumentCards"></div>
+
+  <button class="run-btn" onclick="runProjection()">Run Projection →</button>
+</div>
+
+<!-- ETF Manager Modal -->
+<div class="modal-overlay" id="etfModal">
+  <div class="etf-modal">
+    <div class="etf-modal-head">
+      <h2>ETF / Ticker Library</h2>
+      <button class="top-bar-btn" onclick="closeEtfManager()">✕ Close</button>
+    </div>
+    <div class="etf-modal-body">
+      <div class="etf-add-row">
+        <input id="newTicker"  type="text"   placeholder="TICKER" maxlength="10" style="text-transform:uppercase">
+        <input id="newName"    type="text"   placeholder="Fund name">
+        <input id="newYield"   type="number" placeholder="Yield%" min="0" max="100" step="0.1">
+        <input id="newEr"      type="number" placeholder="ER%" min="0" max="5" step="0.01">
+        <button class="run-btn" style="padding:6px 14px;font-size:0.7rem" onclick="addEtfRow()">+ Add</button>
+      </div>
+      <table class="etf-table" id="etfTable">
+        <thead>
+          <tr>
+            <th>Ticker</th><th>Name</th><th>Yield%</th><th>ER%</th>
+            <th>Beta</th><th>Avg Cap%</th><th>Bull Cap%</th><th>Income</th><th>Account</th><th></th>
+          </tr>
+        </thead>
+        <tbody id="etfTableBody"></tbody>
+      </table>
+    </div>
+    <div class="etf-modal-foot">
+      <button class="run-btn" style="padding:8px 20px;font-size:0.72rem" onclick="saveEtfList()">Save Changes</button>
+      <span style="font-size:0.62rem;color:var(--muted)">Changes are saved to this browser session</span>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════
+     RESULTS SCREEN
+══════════════════════════════════════════ -->
+<div id="resultsScreen">
+  <div class="results-header">
+    <button class="theme-btn" id="themeBtn" onclick="toggleTheme()">☽ Dark</button>
+    <div>
+      <h1>5-Year Projection</h1>
+      <div class="meta" id="resultsMeta"></div>
+    </div>
+    <button class="back-btn" onclick="goBack()">← Edit Inputs</button>
+  </div>
+
+  <div class="controls">
+    <div class="control-group">
+      <label>Scenario</label>
+      <div class="btn-group">
+        <button class="btn active" data-scenario="down" onclick="setScenario('down',this)">Downturn</button>
+        <button class="btn" data-scenario="avg" onclick="setScenario('avg',this)">Avg Market</button>
+        <button class="btn" data-scenario="bull" onclick="setScenario('bull',this)">Bull Run</button>
+      </div>
+    </div>
+    <div class="control-group" id="recoveryGroup">
+      <label>Recovery Speed <span style="color:#e08c5c;font-size:0.85em;">(downturn only)</span></label>
+      <div class="btn-group">
+        <button class="btn" data-recovery="vshape" onclick="setRecovery('vshape',this)">V-Shape 1yr</button>
+        <button class="btn active" data-recovery="grind" onclick="setRecovery('grind',this)">Grind 3yr</button>
+        <button class="btn" data-recovery="slog" onclick="setRecovery('slog',this)">Slog 5yr</button>
+      </div>
+    </div>
+    <div class="control-group">
+
+    </div>
+  </div>
+
+  <div class="chart-wrap">
+    <div class="chart-label">Portfolio Value Over Time</div>
+    <div class="chart-sub" id="scenarioDesc"></div>
+    <div id="sameParamsWarn" style="display:none;background:#2a1a0a;border:1px solid #c8a96e44;border-radius:6px;padding:8px 14px;font-size:0.65rem;color:#c8a96e;margin-bottom:10px;">All instruments have identical Yield% and ER% — lines overlap. Enter different values per ticker on the input screen.</div>
+    <canvas id="mainChart"></canvas>
+  </div>
+
+  <div class="cards" id="cards"></div>
+
+  <div class="tax-section">
+    <h3>Account Type Guidance</h3>
+    <div class="tax-grid" id="taxGrid"></div>
+    <p style="font-size:0.6rem;color:var(--muted);margin-top:12px;">This is general guidance, not personalized tax advice. Consult a tax advisor for your situation. High-income distributions in a traditional IRA are taxed as ordinary income on withdrawal — for funds with favorable cap gains treatment, this can be worse than a brokerage account.</p>
+  </div>
+
+  <div class="footer-note" id="footerNote"></div>
+</div>
+
+<script>
+// ════════════════════════════════════════════
+// INSTRUMENT SETUP
+// ════════════════════════════════════════════
+
+const COLORS = ['#c8a96e','#5cb8a0','#8b7fd4','#e05c8a','#4ab8d4'];
+
+// Known ticker data — auto-fills when user enters a recognized ticker
+const TICKER_DB = {
+  // High-income covered call ETFs
+  'QQQI':  { name: 'NEOS Nasdaq-100 High Income',       yield: 14.2, er: 0.68, downturnBeta: 1.00, avgCapture: 90,  bullCapture: 55,  incomeType: 'mixed',     accountRec: 'roth'   },
+  'SPYI':  { name: 'NEOS S&P 500 High Income',          yield: 11.8, er: 0.68, downturnBeta: 0.85, avgCapture: 85,  bullCapture: 60,  incomeType: 'mixed',     accountRec: 'roth'   },
+  'IWMI':  { name: 'NEOS Russell 2000 High Income',     yield: 18,   er: 0.68, downturnBeta: 1.05, avgCapture: 85,  bullCapture: 55,  incomeType: 'mixed',     accountRec: 'roth'   },
+  'JEPI':  { name: 'JPMorgan Equity Premium Income',    yield: 8.2,  er: 0.35, downturnBeta: 0.70, avgCapture: 75,  bullCapture: 50,  incomeType: 'ordinary',  accountRec: 'roth'   },
+  'JEPQ':  { name: 'JPMorgan Nasdaq Equity Premium',    yield: 11.0, er: 0.35, downturnBeta: 0.90, avgCapture: 82,  bullCapture: 68,  incomeType: 'ordinary',  accountRec: 'roth'   },
+  'DIVO':  { name: 'Amplify CWP Enhanced Div Income',   yield: 4.8,  er: 0.55, downturnBeta: 0.75, avgCapture: 80,  bullCapture: 70,  incomeType: 'qualified', accountRec: 'either' },
+  'QYLD':  { name: 'Global X Nasdaq 100 Covered Call',  yield: 11,   er: 0.60, downturnBeta: 0.90, avgCapture: 60,  bullCapture: 30,  incomeType: 'return',    accountRec: 'brokerage'},
+  'XYLD':  { name: 'Global X S&P 500 Covered Call',     yield: 9.5,  er: 0.60, downturnBeta: 0.80, avgCapture: 60,  bullCapture: 35,  incomeType: 'return',    accountRec: 'brokerage'},
+  'RYLD':  { name: 'Global X Russell 2000 Covered Call',yield: 12,   er: 0.60, downturnBeta: 0.95, avgCapture: 55,  bullCapture: 30,  incomeType: 'return',    accountRec: 'brokerage'},
+  'RSP':   { name: 'Invesco S&P 500 Equal Weight',      yield: 1.6,  er: 0.20, downturnBeta: 0.95, avgCapture: 98,  bullCapture: 95,  incomeType: 'qualified', accountRec: 'either' },
+  'SCHD':  { name: 'Schwab US Dividend Equity',         yield: 3.5,  er: 0.06, downturnBeta: 0.80, avgCapture: 90,  bullCapture: 80,  incomeType: 'qualified', accountRec: 'either' },
+  'VYM':   { name: 'Vanguard High Dividend Yield',      yield: 2.9,  er: 0.06, downturnBeta: 0.82, avgCapture: 88,  bullCapture: 78,  incomeType: 'qualified', accountRec: 'either' },
+  'DVY':   { name: 'iShares Select Dividend',           yield: 3.8,  er: 0.38, downturnBeta: 0.85, avgCapture: 82,  bullCapture: 72,  incomeType: 'qualified', accountRec: 'either' },
+  'DGRO':  { name: 'iShares Core Dividend Growth',      yield: 2.4,  er: 0.08, downturnBeta: 0.82, avgCapture: 92,  bullCapture: 85,  incomeType: 'qualified', accountRec: 'either' },
+  'QQQ':   { name: 'Invesco Nasdaq-100 ETF',            yield: 0.6,  er: 0.20, downturnBeta: 1.00, avgCapture: 100, bullCapture: 100, incomeType: 'qualified', accountRec: 'either' },
+  'SPY':   { name: 'SPDR S&P 500 ETF',                  yield: 1.3,  er: 0.09, downturnBeta: 1.00, avgCapture: 100, bullCapture: 100, incomeType: 'qualified', accountRec: 'either' },
+  'VOO':   { name: 'Vanguard S&P 500 ETF',              yield: 1.3,  er: 0.03, downturnBeta: 1.00, avgCapture: 100, bullCapture: 100, incomeType: 'qualified', accountRec: 'either' },
+  'VTI':   { name: 'Vanguard Total Stock Market',       yield: 1.4,  er: 0.03, downturnBeta: 1.00, avgCapture: 100, bullCapture: 100, incomeType: 'qualified', accountRec: 'either' },
+  'IVV':   { name: 'iShares Core S&P 500',              yield: 1.3,  er: 0.03, downturnBeta: 1.00, avgCapture: 100, bullCapture: 100, incomeType: 'qualified', accountRec: 'either' },
+  'CONY':  { name: 'YieldMax COIN Option Income',       yield: 60,   er: 0.99, downturnBeta: 1.30, avgCapture: 70,  bullCapture: 40,  incomeType: 'ordinary',  accountRec: 'roth'   },
+  'TSLY':  { name: 'YieldMax TSLA Option Income',       yield: 55,   er: 0.99, downturnBeta: 1.20, avgCapture: 65,  bullCapture: 35,  incomeType: 'ordinary',  accountRec: 'roth'   },
+  'MSFO':  { name: 'YieldMax MSFT Option Income',       yield: 18,   er: 0.99, downturnBeta: 0.95, avgCapture: 70,  bullCapture: 45,  incomeType: 'ordinary',  accountRec: 'roth'   },
+  'NVDY':  { name: 'YieldMax NVDA Option Income',       yield: 65,   er: 0.99, downturnBeta: 1.25, avgCapture: 65,  bullCapture: 35,  incomeType: 'ordinary',  accountRec: 'roth'   },
+  'AMZY':  { name: 'YieldMax AMZN Option Income',       yield: 22,   er: 0.99, downturnBeta: 1.00, avgCapture: 68,  bullCapture: 42,  incomeType: 'ordinary',  accountRec: 'roth'   },
+  'GOOGY': { name: 'YieldMax GOOGL Option Income',      yield: 18,   er: 0.99, downturnBeta: 0.95, avgCapture: 68,  bullCapture: 42,  incomeType: 'ordinary',  accountRec: 'roth'   },
+  'YMAG':  { name: 'YieldMax Magnificent 7 Fund',       yield: 35,   er: 0.99, downturnBeta: 1.10, avgCapture: 68,  bullCapture: 40,  incomeType: 'ordinary',  accountRec: 'roth'   },
+  'YMAX':  { name: 'YieldMax Universe Fund',            yield: 30,   er: 0.99, downturnBeta: 1.05, avgCapture: 68,  bullCapture: 40,  incomeType: 'ordinary',  accountRec: 'roth'   },
+  'KLIP':  { name: 'KraneShares China Internet & CC',   yield: 25,   er: 0.95, downturnBeta: 1.10, avgCapture: 70,  bullCapture: 45,  incomeType: 'ordinary',  accountRec: 'roth'   },
+  'FEPI':  { name: 'REX FANG & Innovation Equity IP',   yield: 25,   er: 0.65, downturnBeta: 1.05, avgCapture: 75,  bullCapture: 45,  incomeType: 'mixed',     accountRec: 'roth'   },
+  'GPIQ':  { name: 'Goldman Sachs Nasdaq-100 CC',       yield: 12,   er: 0.29, downturnBeta: 0.95, avgCapture: 85,  bullCapture: 65,  incomeType: 'ordinary',  accountRec: 'roth'   },
+  'GPIX':  { name: 'Goldman Sachs S&P 500 CC',          yield: 10,   er: 0.29, downturnBeta: 0.85, avgCapture: 85,  bullCapture: 65,  incomeType: 'ordinary',  accountRec: 'roth'   },
+  'AGG':   { name: 'iShares Core US Aggregate Bond',    yield: 3.8,  er: 0.03, downturnBeta: 0.10, avgCapture: 20,  bullCapture: 10,  incomeType: 'ordinary',  accountRec: 'ira'    },
+  'BND':   { name: 'Vanguard Total Bond Market',         yield: 3.7,  er: 0.03, downturnBeta: 0.10, avgCapture: 20,  bullCapture: 10,  incomeType: 'ordinary',  accountRec: 'ira'    },
+  'NUSI':  { name: 'Nationwide Nasdaq-100 Risk-Managed', yield: 7.5,  er: 0.68, downturnBeta: 0.60, avgCapture: 65,  bullCapture: 40,  incomeType: 'mixed',     accountRec: 'roth'   },
+  'PFFD':  { name: 'Global X US Preferred ETF',          yield: 6.5,  er: 0.23, downturnBeta: 0.60, avgCapture: 50,  bullCapture: 35,  incomeType: 'ordinary',  accountRec: 'roth'   },
+  'O':     { name: 'Realty Income Corp',                 yield: 5.6,  er: 0,    downturnBeta: 0.70, avgCapture: 60,  bullCapture: 45,  incomeType: 'ordinary',  accountRec: 'roth'   },
+  'MAIN':  { name: 'Main Street Capital',                yield: 6.8,  er: 0,    downturnBeta: 0.80, avgCapture: 75,  bullCapture: 60,  incomeType: 'ordinary',  accountRec: 'roth'   },
+};
+
+/* ── Yahoo Finance fetch via CORS proxy (same method as Market Bottom Dashboard) ── */
+async function yfetch(symbol) {
+  var base = 'https://query1.finance.yahoo.com/v8/finance/chart/'
+    + encodeURIComponent(symbol)
+    + '?interval=1d&range=300d&includePrePost=false';
+  var urls = [
+    base,
+    'https://api.allorigins.win/raw?url=' + encodeURIComponent(base),
+    'https://corsproxy.io/?' + encodeURIComponent(base)
+  ];
+  for (var i = 0; i < urls.length; i++) {
+    try {
+      var r = await fetch(urls[i]);
+      if (!r.ok) continue;
+      var j = await r.json();
+      if (j && j.chart && j.chart.result && j.chart.result[0]) return j;
+    } catch(e) { /* try next proxy */ }
+  }
+  return null;
+}
+
+/* ── Fetch summary data (name, trailing yield, ER) from Yahoo quoteSummary ── */
+async function yfetchSummary(symbol) {
+  var base = 'https://query1.finance.yahoo.com/v10/finance/quoteSummary/'
+    + encodeURIComponent(symbol)
+    + '?modules=summaryDetail,assetProfile,defaultKeyStatistics,fundProfile';
+  var urls = [
+    base,
+    'https://api.allorigins.win/raw?url=' + encodeURIComponent(base),
+    'https://corsproxy.io/?' + encodeURIComponent(base)
+  ];
+  for (var i = 0; i < urls.length; i++) {
+    try {
+      var r = await fetch(urls[i]);
+      if (!r.ok) continue;
+      var j = await r.json();
+      if (j && j.quoteSummary && j.quoteSummary.result) return j.quoteSummary.result[0];
+    } catch(e) { /* try next */ }
+  }
+  return null;
+}
+
+function fillTickerFields(i, data) {
+  var nameEl  = document.getElementById('name_'    + i);
+  var yieldEl = document.getElementById('yield_'   + i);
+  var erEl    = document.getElementById('er_'      + i);
+  var betaEl  = document.getElementById('beta_'    + i);
+  var avgEl   = document.getElementById('avgcap_'  + i);
+  var bullEl  = document.getElementById('bullcap_' + i);
+  var incEl   = document.getElementById('inctype_' + i);
+  var accEl   = document.getElementById('accrec_'  + i);
+  if (nameEl  && !nameEl.value  && data.name)          nameEl.value  = data.name;
+  if (yieldEl && data.yield  != null) { yieldEl.value = data.yield;  yieldEl.style.color = 'var(--accent)'; setTimeout(function(){ yieldEl.style.color = ''; }, 2000); }
+  if (erEl    && data.er     != null) { erEl.value    = data.er;     erEl.style.color    = 'var(--accent)'; setTimeout(function(){ erEl.style.color    = ''; }, 2000); }
+  if (betaEl  && data.downturnBeta != null) betaEl.value = data.downturnBeta;
+  if (avgEl   && data.avgCapture   != null) avgEl.value  = data.avgCapture;
+  if (bullEl  && data.bullCapture  != null) bullEl.value = data.bullCapture;
+  if (incEl   && data.incomeType)           incEl.value  = data.incomeType;
+  if (accEl   && data.accountRec)           accEl.value  = data.accountRec;
+}
+
+function setLookupStatus(i, msg, color) {
+  var nameEl = document.getElementById('name_' + i);
+  if (nameEl && !nameEl.value) {
+    nameEl.placeholder = msg;
+    nameEl.style.color = color || '';
+  }
+  var yieldEl = document.getElementById('yield_' + i);
+  var erEl    = document.getElementById('er_' + i);
+  if (msg === '...') {
+    if (yieldEl && !yieldEl.value) yieldEl.placeholder = '...';
+    if (erEl    && !erEl.value)    erEl.placeholder    = '...';
+  } else {
+    if (yieldEl) yieldEl.placeholder = 'Yield%';
+    if (erEl)    erEl.placeholder    = 'ER%';
+    if (nameEl)  nameEl.placeholder  = 'Description (optional)';
+    if (nameEl)  nameEl.style.color  = '';
+  }
+}
+
+async function autoFillTicker(i) {
+  var tickerEl = document.getElementById('ticker_' + i);
+  if (!tickerEl) return;
+  var t = tickerEl.value.trim().toUpperCase();
+  tickerEl.value = t;
+  if (!t) return;
+
+  // 1. Check local DB first — instant, no network needed
+  if (TICKER_DB[t]) {
+    fillTickerFields(i, TICKER_DB[t]);
+    return;
+  }
+
+  // 2. Unknown ticker — fetch live from Yahoo Finance
+  setLookupStatus(i, 'Looking up ' + t + '...');
+
+  try {
+    // Fetch both chart data (for trailing yield calc) and summary (for name, ER)
+    var [chartJ, summaryJ] = await Promise.all([yfetch(t), yfetchSummary(t)]);
+
+    if (!chartJ && !summaryJ) {
+      setLookupStatus(i, t + ' not found — enter manually');
+      return;
+    }
+
+    var liveData = {};
+
+    // Extract name from summary
+    if (summaryJ) {
+      var fp = summaryJ.fundProfile || {};
+      var sp = summaryJ.summaryDetail || {};
+      var ks = summaryJ.defaultKeyStatistics || {};
+      liveData.name = fp.longName || fp.shortName || ks.longName || '';
+      // Expense ratio from fund profile (annualReportExpenseRatio or totalExpenseRatio)
+      var erRaw = (fp.annualReportExpenseRatio && fp.annualReportExpenseRatio.raw) ||
+                  (fp.totalExpenseRatio && fp.totalExpenseRatio.raw) || null;
+      if (erRaw != null) liveData.er = parseFloat((erRaw * 100).toFixed(2));
+      // Trailing yield from summaryDetail
+      var yRaw = (sp.trailingAnnualDividendYield && sp.trailingAnnualDividendYield.raw) ||
+                 (sp.dividendYield && sp.dividendYield.raw) || null;
+      if (yRaw != null) liveData.yield = parseFloat((yRaw * 100).toFixed(2));
+    }
+
+    // If yield not in summary, compute from chart (trailing 12mo divs / current price)
+    if (liveData.yield == null && chartJ) {
+      var res    = chartJ.chart.result[0];
+      var meta   = res.meta || {};
+      var events = res.events || {};
+      var divs   = events.dividends ? Object.values(events.dividends) : [];
+      var price  = meta.regularMarketPrice || 0;
+      if (divs.length && price > 0) {
+        var now   = Date.now() / 1000;
+        var yr    = now - 365 * 86400;
+        var ttmDiv = divs.filter(function(d){ return d.date > yr; })
+                        .reduce(function(s,d){ return s + d.amount; }, 0);
+        if (ttmDiv > 0) liveData.yield = parseFloat((ttmDiv / price * 100).toFixed(2));
+      }
+    }
+
+    // Use TICKER_DB defaults for behavioral fields if we have a partial match
+    var dbFallback = { downturnBeta: 1.0, avgCapture: 85, bullCapture: 65, incomeType: 'ordinary', accountRec: 'roth' };
+    var merged = Object.assign({}, dbFallback, liveData);
+
+    if (merged.yield != null || merged.name) {
+      fillTickerFields(i, merged);
+      setLookupStatus(i, '');
+    } else {
+      setLookupStatus(i, 'No data found — enter manually');
+    }
+  } catch(e) {
+    console.warn('Live lookup failed for', t, e);
+    setLookupStatus(i, 'Lookup failed — enter manually');
+  }
+}
+
+
+const COLOR_NAMES = ['--c0','--c1','--c2','--c3'];
+const NUM_INSTRUMENTS = 5;
+
+let instruments = []; // filled at runtime
+let currentScenario = 'down';
+let currentView = 'both';
+let currentRecovery = 'grind';
+let START = 10000;
+let chart;
+
+// Build setup cards
+function buildSetupCards() {
+  const container = document.getElementById('instrumentCards');
+  const empty = { ticker: '', name: '', yield: 0, er: 0, downturnBeta: 1.00, avgCapture: 1.00, bullCapture: 1.00, incomeType: 'ordinary', accountRec: 'roth' };
+
+  // Load saved state - validate it has sane values
+  const saved = (() => {
+    try {
+      const raw = JSON.parse(sessionStorage.getItem('projector_rows') || 'null');
+      if (!Array.isArray(raw)) return null;
+      // Validate: avgCapture should be <= 2 (fractional) not 100 (old corrupt data)
+      const isCorrupt = raw.some(r => r && (r.avgCapture > 2 || r.bullCapture > 2));
+      if (isCorrupt) { sessionStorage.removeItem('projector_rows'); return null; }
+      return raw;
+    } catch(e) { return null; }
+  })();
+  const defaults = Array.from({length: 5}, (_, i) => saved && saved[i] ? saved[i] : {...empty});
+
+  const rowColors = ['#c8a96e','#5cb8a0','#8b7fd4','#e05c8a','#4ab8d4'];
+
+  // Rebuild everything including the header
+  container.innerHTML = `<div class="instrument-row-header">
+    <span>#</span><span>Ticker</span><span>Description</span><span style="color:var(--accent)">Yield %</span><span style="color:var(--accent)">ER %</span><span>More</span>
+  </div>` + defaults.map((d, i) => `
+    <div class="instrument-row" id="irow_${i}">
+      <div class="row-num">
+        <span class="color-dot" style="background:${rowColors[i]}"></span>
+        ${i+1}
+      </div>
+      <div class="row-ticker">
+        <input type="text" id="ticker_${i}" value="${d.ticker}" placeholder="TICKER" maxlength="10" style="text-transform:uppercase" tabindex="${i+1}" oninput="this.value=this.value.toUpperCase()" onblur="autoFillTicker(${i})">
+      </div>
+      <div class="row-desc">
+        <input type="text" id="name_${i}" value="${d.name}" placeholder="Description (optional)" tabindex="-1">
+      </div>
+      <div class="row-yield">
+        <input type="number" id="yield_${i}" value="${d.yield}" min="0" max="100" step="0.1" placeholder="Yield%" tabindex="-1">
+      </div>
+      <div class="row-er">
+        <input type="number" id="er_${i}" value="${d.er}" min="0" max="5" step="0.01" placeholder="ER%" tabindex="-1">
+      </div>
+      <div class="row-action">
+        <button type="button" class="vars-toggle row-vars-btn" id="vtoggle_${i}" onclick="toggleVars(${i})">+ More</button>
+      </div>
+      <div class="vars-drawer row-drawer" id="vdrawer_${i}">
+        <div class="drawer-inner">
+          <div class="field-row">
+            <div class="field">
+              <label>Downturn Beta</label>
+              <input type="number" id="beta_${i}" value="${d.downturnBeta}" min="0" max="2" step="0.05">
+              <div class="hint">1.0 = full market drop</div>
+            </div>
+            <div class="field">
+              <label>Avg Mkt Capture (%)</label>
+              <input type="number" id="avgcap_${i}" value="${d.avgCapture * 100}" min="0" max="150" step="1">
+            </div>
+            <div class="field">
+              <label>Bull Capture (%)</label>
+              <input type="number" id="bullcap_${i}" value="${d.bullCapture * 100}" min="0" max="150" step="1">
+            </div>
+            <div class="field">
+              <label>Income Type</label>
+              <select id="inctype_${i}">
+                <option value="ordinary"  ${d.incomeType==='ordinary'  ? 'selected' : ''}>Ordinary Income</option>
+                <option value="qualified" ${d.incomeType==='qualified' ? 'selected' : ''}>Qualified Divs</option>
+                <option value="mixed"     ${d.incomeType==='mixed'     ? 'selected' : ''}>Mixed (60/40)</option>
+                <option value="return"    ${d.incomeType==='return'    ? 'selected' : ''}>Return of Capital</option>
+              </select>
+            </div>
+            <div class="field">
+              <label>Best Account</label>
+              <select id="accrec_${i}">
+                <option value="roth"      ${d.accountRec==='roth'      ? 'selected' : ''}>Roth IRA</option>
+                <option value="ira"       ${d.accountRec==='ira'       ? 'selected' : ''}>Traditional IRA</option>
+                <option value="brokerage" ${d.accountRec==='brokerage' ? 'selected' : ''}>Brokerage OK</option>
+                <option value="either"    ${d.accountRec==='either'    ? 'selected' : ''}>Either</option>
+              </select>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  `).join('');
+}
+
+function updateRowLabel(i) {
+  // nothing needed — ticker updates live via input binding
+}
+
+// ── AUTOCOMPLETE ──────────────────────────────────────────
+function getTickerList() {
+  // Merge built-in TICKER_DB with any session edits
+  try {
+    const edits = JSON.parse(sessionStorage.getItem('etf_edits') || 'null');
+    if (edits) return Object.assign({}, TICKER_DB, edits);
+  } catch(e) {}
+  return TICKER_DB;
+}
+
+function onTickerInput(i) {
+  const input = document.getElementById('ticker_' + i);
+  const list  = document.getElementById('ac_' + i);
+  if (!input || !list) return;
+  const q = input.value.trim().toUpperCase();
+  if (!q) { list.classList.remove('open'); return; }
+
+  const db = getTickerList();
+  const matches = Object.keys(db)
+    .filter(function(t) {
+      return t.startsWith(q) || db[t].name.toUpperCase().includes(q);
+    })
+    .slice(0, 8);
+
+  if (!matches.length) { list.classList.remove('open'); return; }
+
+  list.innerHTML = '';
+  matches.forEach(function(t, idx) {
+    const d = db[t];
+    const item = document.createElement('div');
+    item.className = 'ac-item';
+    item.dataset.ticker = t;
+    item.dataset.idx = String(idx);
+    item.innerHTML =
+      '<span class="ac-ticker">' + t + '</span>' +
+      '<span class="ac-name">' + (d.name || '') + '</span>' +
+      '<span class="ac-yield">' + (d.yield || 0) + '% · ' + (d.er || 0) + '% ER</span>';
+    item.addEventListener('mousedown', function(e) { selectAcItem(e, i, t); });
+    list.appendChild(item);
+  });
+  list.classList.add('open');
+}
+
+function selectAcItem(e, i, ticker) {
+  e.preventDefault();
+  const input = document.getElementById('ticker_' + i);
+  if (input) { input.value = ticker; }
+  const list = document.getElementById('ac_' + i);
+  if (list) list.classList.remove('open');
+  autoFillTicker(i);
+}
+
+function onTickerBlur(i) {
+  // Small delay so mousedown on ac-item fires first
+  setTimeout(function() {
+    const list = document.getElementById('ac_' + i);
+    if (list) list.classList.remove('open');
+    autoFillTicker(i);
+  }, 150);
+}
+
+function onTickerKey(e, i) {
+  const list = document.getElementById('ac_' + i);
+  if (!list || !list.classList.contains('open')) {
+    // Fall through to tab/enter navigation
+    const isTab   = e.key === 'Tab'   && !e.shiftKey;
+    const isEnter = e.key === 'Enter';
+    if (!isTab && !isEnter) return;
+    const next = document.getElementById('ticker_' + (i + 1));
+    if (next) { e.preventDefault(); next.focus(); next.select(); }
+    else if (isEnter) { e.preventDefault(); const rb = document.querySelector('.run-btn'); if (rb) rb.focus(); }
+    return;
+  }
+
+  const items = list.querySelectorAll('.ac-item');
+  const selected = list.querySelector('.ac-item.selected');
+  let idx = selected ? parseInt(selected.dataset.idx) : -1;
+
+  if (e.key === 'ArrowDown') {
+    e.preventDefault();
+    idx = Math.min(idx + 1, items.length - 1);
+    items.forEach(function(it, j) { it.classList.toggle('selected', j === idx); });
+  } else if (e.key === 'ArrowUp') {
+    e.preventDefault();
+    idx = Math.max(idx - 1, 0);
+    items.forEach(function(it, j) { it.classList.toggle('selected', j === idx); });
+  } else if (e.key === 'Enter' || e.key === 'Tab') {
+    e.preventDefault();
+    if (selected) {
+      selectAcItem(e, i, selected.dataset.ticker);
+    } else {
+      list.classList.remove('open');
+      autoFillTicker(i);
+    }
+    if (e.key === 'Tab' || e.key === 'Enter') {
+      const next = document.getElementById('ticker_' + (i + 1));
+      if (next) { setTimeout(function(){ next.focus(); next.select(); }, 160); }
+    }
+  } else if (e.key === 'Escape') {
+    list.classList.remove('open');
+  }
+}
+
+// ── ETF MANAGER ───────────────────────────────────────────
+function openEtfManager() {
+  renderEtfTable();
+  document.getElementById('etfModal').classList.add('open');
+}
+
+function closeEtfManager() {
+  document.getElementById('etfModal').classList.remove('open');
+}
+
+
+var _etfEdits = {};
+
+function markEtfEdit(ticker, input) {
+  if (!_etfEdits[ticker]) {
+    const db = getTickerList();
+    _etfEdits[ticker] = Object.assign({}, db[ticker]);
+  }
+  const field = input.dataset.field;
+  const val = (input.type === 'number') ? parseFloat(input.value) : input.value;
+  _etfEdits[ticker][field] = val;
+}
+
+function deleteEtf(ticker) {
+  if (!confirm('Remove ' + ticker + ' from the list?')) return;
+  _etfEdits[ticker] = null; // null = deleted
+  renderEtfTable();
+}
+
+function addEtfRow() {
+  const t = (document.getElementById('newTicker').value || '').trim().toUpperCase();
+  if (!t) { alert('Enter a ticker symbol'); return; }
+  const db = getTickerList();
+  _etfEdits[t] = {
+    name:        document.getElementById('newName').value  || t,
+    yield:       parseFloat(document.getElementById('newYield').value) || 0,
+    er:          parseFloat(document.getElementById('newEr').value)    || 0,
+    downturnBeta: 1.0, avgCapture: 85, bullCapture: 70,
+    incomeType: 'ordinary', accountRec: 'roth',
+  };
+  document.getElementById('newTicker').value = '';
+  document.getElementById('newName').value   = '';
+  document.getElementById('newYield').value  = '';
+  document.getElementById('newEr').value     = '';
+  renderEtfTable();
+}
+
+function saveEtfList() {
+  // Apply edits on top of TICKER_DB
+  const merged = Object.assign({}, TICKER_DB);
+  Object.keys(_etfEdits).forEach(function(t) {
+    if (_etfEdits[t] === null) delete merged[t];
+    else merged[t] = _etfEdits[t];
+  });
+  try { sessionStorage.setItem('etf_edits', JSON.stringify(_etfEdits)); } catch(e) {}
+  _etfEdits = {};
+  closeEtfManager();
+}
+
+// Close modal on overlay click
+document.addEventListener('click', function(e) {
+  const modal = document.getElementById('etfModal');
+  if (modal && e.target === modal) closeEtfManager();
+});
 
 
 function toggleGlobalVars() {
@@ -1630,26 +3235,7 @@ setTimeout(function() {
   if (t) { t.focus(); t.select(); }
 }, 50);
 
-// Tab and Enter on ticker both jump to next row ticker
-document.addEventListener('keydown', function(e) {
-  const active = document.activeElement;
-  if (!active || !active.id.startsWith('ticker_')) return;
-  const isTab   = e.key === 'Tab'   && !e.shiftKey;
-  const isEnter = e.key === 'Enter';
-  if (!isTab && !isEnter) return;
-  const i = parseInt(active.id.replace('ticker_', ''));
-  autoFillTicker(i);
-  const next = document.getElementById('ticker_' + (i + 1));
-  if (next) {
-    e.preventDefault();
-    next.focus();
-    next.select();
-  } else if (isEnter) {
-    e.preventDefault();
-    const runBtn = document.querySelector('.run-btn');
-    if (runBtn) runBtn.focus();
-  }
-});
+// Tab/Enter navigation handled by onTickerKey()
 </script>
 </body>
 </html>
