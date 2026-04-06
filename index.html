@@ -1150,50 +1150,54 @@ function buildChart() {
   if (warnEl) warnEl.style.display = allSame ? 'block' : 'none';
 
   const labels = ['Now','Yr 1','Yr 2','Yr 3','Yr 4','Yr 5'];
-  const datasets = [];
   const recovery = currentScenario === 'down' ? currentRecovery : 'grind';
 
-  instruments.forEach(function(inst, i) {
+  // Build data arrays first so we can reference them directly in fill
+  // Each instrument gets: priceVals (spend path) and totalVals (reinvest path)
+  const instData = instruments.map(function(inst) {
     const mults = inst.mults[currentScenario];
-    const adjR = currentScenario === 'down' ? getRecoveryMultiplier(mults.reinvest, mults.yr1drop, recovery) : mults.reinvest;
-    const adjS = currentScenario === 'down' ? getRecoveryMultiplier(mults.spend,    mults.yr1drop, recovery) : mults.spend;
+    const adjTotal = currentScenario === 'down' ? getRecoveryMultiplier(mults.reinvest, mults.yr1drop, recovery) : mults.reinvest;
+    const adjPrice = currentScenario === 'down' ? getRecoveryMultiplier(mults.spend,    mults.yr1drop, recovery) : mults.spend;
+    return {
+      totalVals: buildPath(adjTotal, inst.er, mults.yr1drop, recovery),
+      priceVals: buildPath(adjPrice, inst.er, mults.yr1drop, recovery),
+    };
+  });
 
-    // Total return path (reinvested): the full line
-    const totalVals = buildPath(adjR, inst.er, mults.yr1drop, recovery);
-
-    // Price-only path (no reinvestment): the base of the filled band
-    const priceVals = buildPath(adjS, inst.er, mults.yr1drop, recovery);
-
+  // Build datasets: for each ticker, push Price first then Total
+  // Dataset order: [price0, total0, price1, total1, price2, total2...]
+  // fill: 1 on total means "fill to dataset at index-1" = the price dataset for same ticker
+  const datasets = [];
+  instruments.forEach(function(inst, i) {
     const col = COLORS[i];
+    const d = instData[i];
 
-    // Layer 1: Price-only as a filled area (the "floor")
-    // This creates the hollow/baseline for the price component
+    // Price-only line (dashed, thin, no points)
     datasets.push({
-      label: inst.ticker + ' (Price)',
-      data: priceVals,
-      borderColor: col,
-      backgroundColor: col + '22',
-      borderWidth: 2,
-      borderDash: [],
-      fill: 'origin',
+      label: inst.ticker + ' · Price',
+      data: d.priceVals,
+      borderColor: col + '66',
+      backgroundColor: 'transparent',
+      borderWidth: 1.5,
+      borderDash: [4, 3],
+      fill: false,
       tension: 0.4,
       pointRadius: 0,
-      pointHoverRadius: 5,
-      order: i * 2 + 2,
+      pointHoverRadius: 4,
     });
 
-    // Layer 2: Total return on top — the filled band between price and total IS the income
+    // Total return line — fill between this and the Price line above it
+    const priceIdx = datasets.length - 1; // index of the price dataset just pushed
     datasets.push({
-      label: inst.ticker + ' (+ Income)',
-      data: totalVals,
+      label: inst.ticker + ' · Total',
+      data: d.totalVals,
       borderColor: col,
-      backgroundColor: col + '55',
+      backgroundColor: col + '40',
       borderWidth: 2.5,
-      fill: '-1',  // fill DOWN to the previous dataset (price line)
+      fill: priceIdx,   // fill DOWN to the price line (absolute dataset index)
       tension: 0.4,
       pointRadius: 4,
       pointHoverRadius: 6,
-      order: i * 2 + 1,
     });
   });
 
@@ -1211,23 +1215,9 @@ function buildChart() {
             font: { family: 'DM Mono', size: 11 },
             boxWidth: 14, padding: 14, usePointStyle: true,
             filter: function(item) {
-              // Only show "+ Income" lines in legend (suppress Price duplicates)
-              return item.text.indexOf('+ Income') !== -1;
+              // Only show Total lines in legend
+              return item.text.indexOf('Total') !== -1;
             },
-            generateLabels: function(chart) {
-              return chart.data.datasets
-                .filter(function(ds) { return ds.label.indexOf('+ Income') !== -1; })
-                .map(function(ds, i) {
-                  return {
-                    text: ds.label.replace(' (+ Income)', ''),
-                    fillStyle: ds.borderColor,
-                    strokeStyle: ds.borderColor,
-                    lineWidth: 2,
-                    hidden: false,
-                    index: i,
-                  };
-                });
-            }
           }
         },
         tooltip: {
@@ -1236,25 +1226,25 @@ function buildChart() {
           titleFont: { family: 'DM Mono', size: 11 }, bodyFont: { family: 'DM Mono', size: 11 },
           itemSort: function(a, b) { return b.parsed.y - a.parsed.y; },
           filter: function(item) {
-            // Only show "+ Income" lines in tooltip
-            return item.dataset.label.indexOf('+ Income') !== -1;
+            // Only show Total lines in tooltip
+            return item.dataset.label.indexOf('Total') !== -1;
           },
           callbacks: {
             label: function(ctx) {
-              const ticker = ctx.dataset.label.replace(' (+ Income)', '');
-              const total = ctx.parsed.y;
-              // Find the matching Price dataset value at same index
-              const priceDs = ctx.chart.data.datasets.find(function(ds) {
-                return ds.label === ticker + ' (Price)';
-              });
-              const priceVal = priceDs ? priceDs.data[ctx.dataIndex] : START;
-              const income = total - priceVal;
-              const totalPct = (((total - START) / START) * 100).toFixed(1);
-              const sign = totalPct >= 0 ? '+' : '';
+              const ticker = ctx.dataset.label.replace(' · Total', '');
+              const totalVal = ctx.parsed.y;
+              // Price dataset is always at (dataset index - 1)
+              const priceDsIdx = ctx.datasetIndex - 1;
+              const priceVal = ctx.chart.data.datasets[priceDsIdx]
+                ? ctx.chart.data.datasets[priceDsIdx].data[ctx.dataIndex]
+                : START;
+              const income = Math.max(0, totalVal - priceVal);
+              const totalPct = (((totalVal - START) / START) * 100).toFixed(1);
+              const sign = parseFloat(totalPct) >= 0 ? '+' : '';
               return [
-                ' ' + ticker + ': $' + total.toLocaleString() + ' (' + sign + totalPct + '% total)',
-                '   ├ Price:  $' + priceVal.toLocaleString(),
-                '   └ Income: +$' + Math.max(0, income).toLocaleString(),
+                ' ' + ticker + ': $' + Math.round(totalVal).toLocaleString() + ' (' + sign + totalPct + '%)',
+                '   ├ Price only:  $' + Math.round(priceVal).toLocaleString(),
+                '   └ + Income:   +$' + Math.round(income).toLocaleString(),
               ];
             },
             labelColor: function(ctx) {
