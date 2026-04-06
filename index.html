@@ -696,6 +696,37 @@ input::placeholder { color: var(--muted); }
   background: var(--surface2);
 }
 .etf-table .ticker-cell { color: var(--accent); font-weight: 500; }
+.th-tip {
+  position: relative;
+  cursor: help;
+  border-bottom: 1px dashed var(--muted);
+}
+.th-tip::after {
+  content: attr(data-tip);
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--text);
+  color: var(--bg);
+  font-size: 0.6rem;
+  font-weight: normal;
+  text-transform: none;
+  letter-spacing: 0;
+  white-space: nowrap;
+  padding: 5px 10px;
+  border-radius: 5px;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.15s;
+  z-index: 9999;
+  max-width: 220px;
+  white-space: normal;
+  text-align: center;
+  line-height: 1.4;
+}
+.th-tip:hover::after { opacity: 1; }
+
 .etf-del-btn {
   background: none;
   border: none;
@@ -873,8 +904,16 @@ input::placeholder { color: var(--muted); }
       <table class="etf-table" id="etfTable">
         <thead>
           <tr>
-            <th>Ticker</th><th>Name</th><th>Yield%</th><th>ER%</th>
-            <th>Beta</th><th>Avg Cap%</th><th>Bull Cap%</th><th>Income</th><th>Account</th><th></th>
+            <th>Ticker</th>
+            <th>Name</th>
+            <th><span class="th-tip" data-tip="Trailing 12-month dividend/distribution yield as a % of current price. Higher = more income. Fetched live from Yahoo Finance.">Yield%</span></th>
+            <th><span class="th-tip" data-tip="Expense Ratio — the annual fee charged by the fund, deducted from returns. Lower is better. 0.03% = $3/yr per $10k.">ER%</span></th>
+            <th><span class="th-tip" data-tip="Downturn Beta — how much this fund drops relative to the market in a sell-off. 1.0 = moves with market. 0.7 = drops only 70% as much.">Beta</span></th>
+            <th><span class="th-tip" data-tip="Average Market Capture — what % of the market's average annual return this fund captures. 85% means if market returns 10%, fund returns ~8.5%.">Avg Cap%</span></th>
+            <th><span class="th-tip" data-tip="Bull Market Capture — what % of upside the fund captures in a strong rally. Covered-call funds typically have low bull capture (40-70%) because sold calls cap upside.">Bull Cap%</span></th>
+            <th><span class="th-tip" data-tip="Income Type — how distributions are taxed. Ordinary = highest rate. Qualified = lower cap gains rate. Mixed = both. Return of Capital = tax-deferred basis reduction.">Income</span></th>
+            <th><span class="th-tip" data-tip="Best Account — recommended account type for tax efficiency. Ordinary income funds belong in Roth/IRA. Qualified dividend funds are more brokerage-friendly.">Account</span></th>
+            <th></th>
           </tr>
         </thead>
         <tbody id="etfTableBody"></tbody>
@@ -1052,37 +1091,73 @@ async function autoFillTicker(i) {
   var t = tickerEl.value.trim().toUpperCase();
   tickerEl.value = t;
   if (!t) return;
+
   var db = getTickerList();
   if (db[t]) { fillTickerFields(i, db[t]); return; }
+
   setLookupStatus(i, 'Looking up ' + t + '...');
   try {
-    var results = await Promise.all([yfetch(t), yfetchSummary(t)]);
-    var chartJ = results[0]; var summaryJ = results[1];
-    if (!chartJ && !summaryJ) { setLookupStatus(i, t + ' not found'); return; }
-    var liveData = {};
+    var results = await Promise.all([yfetchSummary(t), yfetch(t), yfetch('SPY')]);
+    var summaryJ = results[0], chartJ = results[1], spyJ = results[2];
+    var liveData = { downturnBeta:1.0, avgCapture:85, bullCapture:70, incomeType:'ordinary', accountRec:'roth' };
+
     if (summaryJ) {
-      var fp = summaryJ.fundProfile || {}; var sp = summaryJ.summaryDetail || {};
-      liveData.name = fp.longName || fp.shortName || '';
+      var fp = summaryJ.fundProfile || {};
+      var sp = summaryJ.summaryDetail || {};
+      var ks = summaryJ.defaultKeyStatistics || {};
+      liveData.name = fp.longName || fp.shortName || ks.longName || '';
       var erRaw = (fp.annualReportExpenseRatio && fp.annualReportExpenseRatio.raw) || (fp.totalExpenseRatio && fp.totalExpenseRatio.raw) || null;
       if (erRaw != null) liveData.er = parseFloat((erRaw * 100).toFixed(2));
-      var yRaw = (sp.trailingAnnualDividendYield && sp.trailingAnnualDividendYield.raw) || (sp.dividendYield && sp.dividendYield.raw) || null;
+      var yRaw = (sp.yield && sp.yield.raw) || (sp.trailingAnnualDividendYield && sp.trailingAnnualDividendYield.raw) || (sp.dividendYield && sp.dividendYield.raw) || null;
       if (yRaw != null) liveData.yield = parseFloat((yRaw * 100).toFixed(2));
+      var betaRaw = (ks.beta && ks.beta.raw) || (sp.beta && sp.beta.raw) || null;
+      if (betaRaw != null) liveData.downturnBeta = parseFloat(betaRaw.toFixed(2));
+      var category = (fp.category || '').toLowerCase();
+      if (category.includes('bond') || category.includes('fixed') || category.includes('muni')) { liveData.incomeType='ordinary'; liveData.accountRec='ira'; }
+      else if (category.includes('dividend') || category.includes('equity income')) { liveData.incomeType='qualified'; liveData.accountRec='either'; }
     }
-    if (liveData.yield == null && chartJ) {
-      var res = chartJ.chart.result[0]; var meta = res.meta || {};
-      var events = res.events || {}; var divs = events.dividends ? Object.values(events.dividends) : [];
-      var price = meta.regularMarketPrice || 0;
-      if (divs.length && price > 0) {
-        var now = Date.now() / 1000; var yr = now - 365 * 86400;
-        var ttmDiv = divs.filter(function(d){ return d.date > yr; }).reduce(function(s,d){ return s + d.amount; }, 0);
-        if (ttmDiv > 0) liveData.yield = parseFloat((ttmDiv / price * 100).toFixed(2));
+
+    if ((liveData.yield == null || liveData.yield === 0) && chartJ) {
+      var res0 = chartJ.chart.result[0]; var meta0 = res0.meta || {};
+      var evts = res0.events || {}; var divs = evts.dividends ? Object.values(evts.dividends) : [];
+      var price0 = meta0.regularMarketPrice || 0;
+      if (divs.length && price0 > 0) {
+        var nowTs = Date.now()/1000; var yrAgo = nowTs - 365*86400;
+        var ttm = divs.filter(function(d){ return d.date > yrAgo; }).reduce(function(s,d){ return s+d.amount; }, 0);
+        if (ttm > 0) liveData.yield = parseFloat((ttm/price0*100).toFixed(2));
       }
     }
-    var merged = Object.assign({ downturnBeta: 1.0, avgCapture: 85, bullCapture: 65, incomeType: 'ordinary', accountRec: 'roth' }, liveData);
-    if (merged.yield != null || merged.name) { fillTickerFields(i, merged); setLookupStatus(i, ''); }
+
+    if (chartJ && spyJ) {
+      try {
+        var etfQ = chartJ.chart.result[0].indicators.quote[0];
+        var spyQ = spyJ.chart.result[0].indicators.quote[0];
+        var etfC = etfQ.close.filter(function(v){ return v!=null; });
+        var spyC = spyQ.close.filter(function(v){ return v!=null; });
+        var len = Math.min(etfC.length, spyC.length, 252);
+        var etf = etfC.slice(-len), spy = spyC.slice(-len);
+        var etfRets=[], spyRets=[];
+        for (var k=1;k<len;k++) { etfRets.push((etf[k]-etf[k-1])/etf[k-1]); spyRets.push((spy[k]-spy[k-1])/spy[k-1]); }
+        var upE=0,upS=0,dnE=0,dnS=0,upN=0,dnN=0;
+        for (var j=0;j<etfRets.length;j++) {
+          if (spyRets[j]>0){upE+=etfRets[j];upS+=spyRets[j];upN++;}
+          else if (spyRets[j]<0){dnE+=etfRets[j];dnS+=spyRets[j];dnN++;}
+        }
+        var totalE=etf[len-1]/etf[0]-1, totalS=spy[len-1]/spy[0]-1;
+        if (Math.abs(totalS)>0.001) liveData.avgCapture = Math.round(Math.max(0,Math.min(150,(totalE/totalS)*100)));
+        if (upN>10 && Math.abs(upS)>0.001) liveData.bullCapture = Math.round(Math.max(0,Math.min(150,(upE/upS)*100)));
+        if (dnN>10 && Math.abs(dnS)>0.001 && !summaryJ) liveData.downturnBeta = parseFloat(Math.max(0,Math.min(2,dnE/dnS)).toFixed(2));
+      } catch(ce){ console.warn('Capture calc failed:', ce); }
+    }
+
+    if (liveData.yield != null || liveData.name) { fillTickerFields(i, liveData); setLookupStatus(i,''); }
     else setLookupStatus(i, 'No data — enter manually');
-  } catch(e) { setLookupStatus(i, 'Lookup failed'); }
+  } catch(e) {
+    console.warn('Lookup failed for', t, e);
+    setLookupStatus(i, 'Lookup failed — enter manually');
+  }
 }
+
 
 // ════════════════════════════════════════════
 // AUTOCOMPLETE
