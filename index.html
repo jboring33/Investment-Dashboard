@@ -715,6 +715,7 @@ canvas { max-height: 360px; }
   <div class="chart-wrap">
     <div class="chart-label">Portfolio Value Over Time</div>
     <div class="chart-sub" id="scenarioDesc"></div>
+    <div id="sameParamsWarn" style="display:none;background:#2a1a0a;border:1px solid #c8a96e44;border-radius:6px;padding:8px 14px;font-size:0.65rem;color:#c8a96e;margin-bottom:10px;">All instruments have identical Yield% and ER% — lines overlap. Enter different values per ticker on the input screen.</div>
     <canvas id="mainChart"></canvas>
   </div>
 
@@ -739,11 +740,11 @@ const COLORS = ['#c8a96e','#5cb8a0','#8b7fd4','#e05c8a','#4ab8d4'];
 // Known ticker data — auto-fills when user enters a recognized ticker
 const TICKER_DB = {
   // High-income covered call ETFs
-  'QQQI':  { name: 'NEOS Nasdaq-100 High Income',       yield: 42,   er: 0.68, downturnBeta: 1.00, avgCapture: 90,  bullCapture: 55,  incomeType: 'mixed',     accountRec: 'roth'   },
-  'SPYI':  { name: 'NEOS S&P 500 High Income',          yield: 11.5, er: 0.68, downturnBeta: 0.85, avgCapture: 85,  bullCapture: 60,  incomeType: 'mixed',     accountRec: 'roth'   },
+  'QQQI':  { name: 'NEOS Nasdaq-100 High Income',       yield: 14.2, er: 0.68, downturnBeta: 1.00, avgCapture: 90,  bullCapture: 55,  incomeType: 'mixed',     accountRec: 'roth'   },
+  'SPYI':  { name: 'NEOS S&P 500 High Income',          yield: 11.8, er: 0.68, downturnBeta: 0.85, avgCapture: 85,  bullCapture: 60,  incomeType: 'mixed',     accountRec: 'roth'   },
   'IWMI':  { name: 'NEOS Russell 2000 High Income',     yield: 18,   er: 0.68, downturnBeta: 1.05, avgCapture: 85,  bullCapture: 55,  incomeType: 'mixed',     accountRec: 'roth'   },
   'JEPI':  { name: 'JPMorgan Equity Premium Income',    yield: 8.2,  er: 0.35, downturnBeta: 0.70, avgCapture: 75,  bullCapture: 50,  incomeType: 'ordinary',  accountRec: 'roth'   },
-  'JEPQ':  { name: 'JPMorgan Nasdaq Equity Premium',    yield: 11.5, er: 0.35, downturnBeta: 0.90, avgCapture: 82,  bullCapture: 68,  incomeType: 'ordinary',  accountRec: 'roth'   },
+  'JEPQ':  { name: 'JPMorgan Nasdaq Equity Premium',    yield: 11.0, er: 0.35, downturnBeta: 0.90, avgCapture: 82,  bullCapture: 68,  incomeType: 'ordinary',  accountRec: 'roth'   },
   'DIVO':  { name: 'Amplify CWP Enhanced Div Income',   yield: 4.8,  er: 0.55, downturnBeta: 0.75, avgCapture: 80,  bullCapture: 70,  incomeType: 'qualified', accountRec: 'either' },
   'QYLD':  { name: 'Global X Nasdaq 100 Covered Call',  yield: 11,   er: 0.60, downturnBeta: 0.90, avgCapture: 60,  bullCapture: 30,  incomeType: 'return',    accountRec: 'brokerage'},
   'XYLD':  { name: 'Global X S&P 500 Covered Call',     yield: 9.5,  er: 0.60, downturnBeta: 0.80, avgCapture: 60,  bullCapture: 35,  incomeType: 'return',    accountRec: 'brokerage'},
@@ -771,36 +772,162 @@ const TICKER_DB = {
   'GPIX':  { name: 'Goldman Sachs S&P 500 CC',          yield: 10,   er: 0.29, downturnBeta: 0.85, avgCapture: 85,  bullCapture: 65,  incomeType: 'ordinary',  accountRec: 'roth'   },
 };
 
-function autoFillTicker(i) {
-  const tickerEl = document.getElementById('ticker_' + i);
-  if (!tickerEl) return;
-  const t = tickerEl.value.trim().toUpperCase();
-  tickerEl.value = t;
-  const data = TICKER_DB[t];
-  if (!data) return;
-
-  // Fill name
-  const nameEl = document.getElementById('name_' + i);
-  if (nameEl && !nameEl.value) nameEl.value = data.name;
-
-  // Fill inline yield/ER
-  const yieldEl = document.getElementById('yield_' + i);
-  if (yieldEl) yieldEl.value = data.yield;
-  const erEl = document.getElementById('er_' + i);
-  if (erEl) erEl.value = data.er;
-
-  // Fill hidden vars
-  const betaEl = document.getElementById('beta_' + i);
-  if (betaEl) betaEl.value = data.downturnBeta;
-  const avgEl = document.getElementById('avgcap_' + i);
-  if (avgEl) avgEl.value = data.avgCapture;
-  const bullEl = document.getElementById('bullcap_' + i);
-  if (bullEl) bullEl.value = data.bullCapture;
-  const incEl = document.getElementById('inctype_' + i);
-  if (incEl) incEl.value = data.incomeType;
-  const accEl = document.getElementById('accrec_' + i);
-  if (accEl) accEl.value = data.accountRec;
+/* ── Yahoo Finance fetch via CORS proxy (same method as Market Bottom Dashboard) ── */
+async function yfetch(symbol) {
+  var base = 'https://query1.finance.yahoo.com/v8/finance/chart/'
+    + encodeURIComponent(symbol)
+    + '?interval=1d&range=300d&includePrePost=false';
+  var urls = [
+    base,
+    'https://api.allorigins.win/raw?url=' + encodeURIComponent(base),
+    'https://corsproxy.io/?' + encodeURIComponent(base)
+  ];
+  for (var i = 0; i < urls.length; i++) {
+    try {
+      var r = await fetch(urls[i]);
+      if (!r.ok) continue;
+      var j = await r.json();
+      if (j && j.chart && j.chart.result && j.chart.result[0]) return j;
+    } catch(e) { /* try next proxy */ }
+  }
+  return null;
 }
+
+/* ── Fetch summary data (name, trailing yield, ER) from Yahoo quoteSummary ── */
+async function yfetchSummary(symbol) {
+  var base = 'https://query1.finance.yahoo.com/v10/finance/quoteSummary/'
+    + encodeURIComponent(symbol)
+    + '?modules=summaryDetail,assetProfile,defaultKeyStatistics,fundProfile';
+  var urls = [
+    base,
+    'https://api.allorigins.win/raw?url=' + encodeURIComponent(base),
+    'https://corsproxy.io/?' + encodeURIComponent(base)
+  ];
+  for (var i = 0; i < urls.length; i++) {
+    try {
+      var r = await fetch(urls[i]);
+      if (!r.ok) continue;
+      var j = await r.json();
+      if (j && j.quoteSummary && j.quoteSummary.result) return j.quoteSummary.result[0];
+    } catch(e) { /* try next */ }
+  }
+  return null;
+}
+
+function fillTickerFields(i, data) {
+  var nameEl  = document.getElementById('name_'    + i);
+  var yieldEl = document.getElementById('yield_'   + i);
+  var erEl    = document.getElementById('er_'      + i);
+  var betaEl  = document.getElementById('beta_'    + i);
+  var avgEl   = document.getElementById('avgcap_'  + i);
+  var bullEl  = document.getElementById('bullcap_' + i);
+  var incEl   = document.getElementById('inctype_' + i);
+  var accEl   = document.getElementById('accrec_'  + i);
+  if (nameEl  && !nameEl.value  && data.name)          nameEl.value  = data.name;
+  if (yieldEl && data.yield  != null) { yieldEl.value = data.yield;  yieldEl.style.color = 'var(--accent)'; setTimeout(function(){ yieldEl.style.color = ''; }, 2000); }
+  if (erEl    && data.er     != null) { erEl.value    = data.er;     erEl.style.color    = 'var(--accent)'; setTimeout(function(){ erEl.style.color    = ''; }, 2000); }
+  if (betaEl  && data.downturnBeta != null) betaEl.value = data.downturnBeta;
+  if (avgEl   && data.avgCapture   != null) avgEl.value  = data.avgCapture;
+  if (bullEl  && data.bullCapture  != null) bullEl.value = data.bullCapture;
+  if (incEl   && data.incomeType)           incEl.value  = data.incomeType;
+  if (accEl   && data.accountRec)           accEl.value  = data.accountRec;
+}
+
+function setLookupStatus(i, msg, color) {
+  var nameEl = document.getElementById('name_' + i);
+  if (nameEl && !nameEl.value) {
+    nameEl.placeholder = msg;
+    nameEl.style.color = color || '';
+  }
+  var yieldEl = document.getElementById('yield_' + i);
+  var erEl    = document.getElementById('er_' + i);
+  if (msg === '...') {
+    if (yieldEl && !yieldEl.value) yieldEl.placeholder = '...';
+    if (erEl    && !erEl.value)    erEl.placeholder    = '...';
+  } else {
+    if (yieldEl) yieldEl.placeholder = 'Yield%';
+    if (erEl)    erEl.placeholder    = 'ER%';
+    if (nameEl)  nameEl.placeholder  = 'Description (optional)';
+    if (nameEl)  nameEl.style.color  = '';
+  }
+}
+
+async function autoFillTicker(i) {
+  var tickerEl = document.getElementById('ticker_' + i);
+  if (!tickerEl) return;
+  var t = tickerEl.value.trim().toUpperCase();
+  tickerEl.value = t;
+  if (!t) return;
+
+  // 1. Check local DB first — instant, no network needed
+  if (TICKER_DB[t]) {
+    fillTickerFields(i, TICKER_DB[t]);
+    return;
+  }
+
+  // 2. Unknown ticker — fetch live from Yahoo Finance
+  setLookupStatus(i, 'Looking up ' + t + '...');
+
+  try {
+    // Fetch both chart data (for trailing yield calc) and summary (for name, ER)
+    var [chartJ, summaryJ] = await Promise.all([yfetch(t), yfetchSummary(t)]);
+
+    if (!chartJ && !summaryJ) {
+      setLookupStatus(i, t + ' not found — enter manually');
+      return;
+    }
+
+    var liveData = {};
+
+    // Extract name from summary
+    if (summaryJ) {
+      var fp = summaryJ.fundProfile || {};
+      var sp = summaryJ.summaryDetail || {};
+      var ks = summaryJ.defaultKeyStatistics || {};
+      liveData.name = fp.longName || fp.shortName || ks.longName || '';
+      // Expense ratio from fund profile (annualReportExpenseRatio or totalExpenseRatio)
+      var erRaw = (fp.annualReportExpenseRatio && fp.annualReportExpenseRatio.raw) ||
+                  (fp.totalExpenseRatio && fp.totalExpenseRatio.raw) || null;
+      if (erRaw != null) liveData.er = parseFloat((erRaw * 100).toFixed(2));
+      // Trailing yield from summaryDetail
+      var yRaw = (sp.trailingAnnualDividendYield && sp.trailingAnnualDividendYield.raw) ||
+                 (sp.dividendYield && sp.dividendYield.raw) || null;
+      if (yRaw != null) liveData.yield = parseFloat((yRaw * 100).toFixed(2));
+    }
+
+    // If yield not in summary, compute from chart (trailing 12mo divs / current price)
+    if (liveData.yield == null && chartJ) {
+      var res    = chartJ.chart.result[0];
+      var meta   = res.meta || {};
+      var events = res.events || {};
+      var divs   = events.dividends ? Object.values(events.dividends) : [];
+      var price  = meta.regularMarketPrice || 0;
+      if (divs.length && price > 0) {
+        var now   = Date.now() / 1000;
+        var yr    = now - 365 * 86400;
+        var ttmDiv = divs.filter(function(d){ return d.date > yr; })
+                        .reduce(function(s,d){ return s + d.amount; }, 0);
+        if (ttmDiv > 0) liveData.yield = parseFloat((ttmDiv / price * 100).toFixed(2));
+      }
+    }
+
+    // Use TICKER_DB defaults for behavioral fields if we have a partial match
+    var dbFallback = { downturnBeta: 1.0, avgCapture: 85, bullCapture: 65, incomeType: 'ordinary', accountRec: 'roth' };
+    var merged = Object.assign({}, dbFallback, liveData);
+
+    if (merged.yield != null || merged.name) {
+      fillTickerFields(i, merged);
+      setLookupStatus(i, '');
+    } else {
+      setLookupStatus(i, 'No data found — enter manually');
+    }
+  } catch(e) {
+    console.warn('Live lookup failed for', t, e);
+    setLookupStatus(i, 'Lookup failed — enter manually');
+  }
+}
+
+
 const COLOR_NAMES = ['--c0','--c1','--c2','--c3'];
 const NUM_INSTRUMENTS = 5;
 
@@ -833,7 +960,7 @@ function buildSetupCards() {
 
   // Rebuild everything including the header
   container.innerHTML = `<div class="instrument-row-header">
-    <span>#</span><span>Ticker</span><span>Description</span><span>Yield %</span><span>ER %</span><span>More</span>
+    <span>#</span><span>Ticker</span><span>Description</span><span style="color:var(--accent)">Yield %</span><span style="color:var(--accent)">ER %</span><span>More</span>
   </div>` + defaults.map((d, i) => `
     <div class="instrument-row" id="irow_${i}">
       <div class="row-num">
@@ -1021,6 +1148,12 @@ function buildPath(multiplier, er, yr1drop, recovery) {
 // ════════════════════════════════════════════
 
 function buildChart() {
+  const allSame = instruments.length > 1 && instruments.every(function(inst) {
+    return inst.yield === instruments[0].yield && inst.er === instruments[0].er;
+  });
+  const warnEl = document.getElementById('sameParamsWarn');
+  if (warnEl) warnEl.style.display = allSame ? 'block' : 'none';
+
   const labels = ['Now','Yr 1','Yr 2','Yr 3','Yr 4','Yr 5'];
   const datasets = [];
   const recovery = currentScenario === 'down' ? currentRecovery : 'grind';
@@ -1249,8 +1382,8 @@ function setScenario(s, btn) {
 
   const descs = {
     down: `${document.getElementById('downturnPct')?.value || 20}% market drop yr 1 — recovery speed adjustable below`,
-    avg:  `Steady ~${document.getElementById('avgReturn')?.value || 5}%/yr market — covered call / income funds thrive`,
-    bull: `Strong ~${document.getElementById('bullReturn')?.value || 15}%/yr rally — upside capture determines the winner`,
+    avg:  `Avg market: +${document.getElementById('avgReturn')?.value || 5}%/yr — enter Yield% and ER% per ticker for differentiated lines`,
+    bull: `Bull run: +${document.getElementById('bullReturn')?.value || 15}%/yr — upside capture rate is the key differentiator`,
   };
   document.getElementById('scenarioDesc').textContent = descs[s];
   buildChart(); buildCards();
