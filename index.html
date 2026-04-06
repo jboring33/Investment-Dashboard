@@ -1041,10 +1041,12 @@ function buildChart() {
       });
     }
     if (currentView !== 'reinvest') {
+      // Spend line: same color but 50% opacity and dashed
       datasets.push({
         label: `${inst.ticker} (Spend)`,
-        data: sVals, borderColor: col, backgroundColor: 'transparent',
-        borderWidth: 1.5, borderDash: [5,4], fill: false, tension: 0.4, pointRadius: 3, pointHoverRadius: 5,
+        data: sVals, borderColor: col + '88', backgroundColor: 'transparent',
+        borderWidth: 1.5, borderDash: [6,3], fill: false, tension: 0.4, pointRadius: 2, pointHoverRadius: 5,
+        pointBackgroundColor: col + '88',
       });
     }
   });
