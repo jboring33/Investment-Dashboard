@@ -942,91 +942,78 @@ input::placeholder { color: var(--muted); }
 
 <script>
 // ════════════════════════════════════════════
-// INSTRUMENT SETUP
+// TICKER DATABASE
 // ════════════════════════════════════════════
-
-const COLORS = ['#c8a96e','#5cb8a0','#8b7fd4','#e05c8a','#4ab8d4'];
-
-// Known ticker data — auto-fills when user enters a recognized ticker
 const TICKER_DB = {
-  // High-income covered call ETFs
-  'QQQI':  { name: 'NEOS Nasdaq-100 High Income',       yield: 14.2, er: 0.68, downturnBeta: 1.00, avgCapture: 90,  bullCapture: 55,  incomeType: 'mixed',     accountRec: 'roth'   },
-  'SPYI':  { name: 'NEOS S&P 500 High Income',          yield: 11.8, er: 0.68, downturnBeta: 0.85, avgCapture: 85,  bullCapture: 60,  incomeType: 'mixed',     accountRec: 'roth'   },
-  'IWMI':  { name: 'NEOS Russell 2000 High Income',     yield: 18,   er: 0.68, downturnBeta: 1.05, avgCapture: 85,  bullCapture: 55,  incomeType: 'mixed',     accountRec: 'roth'   },
-  'JEPI':  { name: 'JPMorgan Equity Premium Income',    yield: 8.2,  er: 0.35, downturnBeta: 0.70, avgCapture: 75,  bullCapture: 50,  incomeType: 'ordinary',  accountRec: 'roth'   },
-  'JEPQ':  { name: 'JPMorgan Nasdaq Equity Premium',    yield: 11.0, er: 0.35, downturnBeta: 0.90, avgCapture: 82,  bullCapture: 68,  incomeType: 'ordinary',  accountRec: 'roth'   },
-  'DIVO':  { name: 'Amplify CWP Enhanced Div Income',   yield: 4.8,  er: 0.55, downturnBeta: 0.75, avgCapture: 80,  bullCapture: 70,  incomeType: 'qualified', accountRec: 'either' },
-  'QYLD':  { name: 'Global X Nasdaq 100 Covered Call',  yield: 11,   er: 0.60, downturnBeta: 0.90, avgCapture: 60,  bullCapture: 30,  incomeType: 'return',    accountRec: 'brokerage'},
-  'XYLD':  { name: 'Global X S&P 500 Covered Call',     yield: 9.5,  er: 0.60, downturnBeta: 0.80, avgCapture: 60,  bullCapture: 35,  incomeType: 'return',    accountRec: 'brokerage'},
-  'RYLD':  { name: 'Global X Russell 2000 Covered Call',yield: 12,   er: 0.60, downturnBeta: 0.95, avgCapture: 55,  bullCapture: 30,  incomeType: 'return',    accountRec: 'brokerage'},
-  'RSP':   { name: 'Invesco S&P 500 Equal Weight',      yield: 1.6,  er: 0.20, downturnBeta: 0.95, avgCapture: 98,  bullCapture: 95,  incomeType: 'qualified', accountRec: 'either' },
-  'SCHD':  { name: 'Schwab US Dividend Equity',         yield: 3.5,  er: 0.06, downturnBeta: 0.80, avgCapture: 90,  bullCapture: 80,  incomeType: 'qualified', accountRec: 'either' },
-  'VYM':   { name: 'Vanguard High Dividend Yield',      yield: 2.9,  er: 0.06, downturnBeta: 0.82, avgCapture: 88,  bullCapture: 78,  incomeType: 'qualified', accountRec: 'either' },
-  'DVY':   { name: 'iShares Select Dividend',           yield: 3.8,  er: 0.38, downturnBeta: 0.85, avgCapture: 82,  bullCapture: 72,  incomeType: 'qualified', accountRec: 'either' },
-  'DGRO':  { name: 'iShares Core Dividend Growth',      yield: 2.4,  er: 0.08, downturnBeta: 0.82, avgCapture: 92,  bullCapture: 85,  incomeType: 'qualified', accountRec: 'either' },
-  'QQQ':   { name: 'Invesco Nasdaq-100 ETF',            yield: 0.6,  er: 0.20, downturnBeta: 1.00, avgCapture: 100, bullCapture: 100, incomeType: 'qualified', accountRec: 'either' },
-  'SPY':   { name: 'SPDR S&P 500 ETF',                  yield: 1.3,  er: 0.09, downturnBeta: 1.00, avgCapture: 100, bullCapture: 100, incomeType: 'qualified', accountRec: 'either' },
-  'VOO':   { name: 'Vanguard S&P 500 ETF',              yield: 1.3,  er: 0.03, downturnBeta: 1.00, avgCapture: 100, bullCapture: 100, incomeType: 'qualified', accountRec: 'either' },
-  'VTI':   { name: 'Vanguard Total Stock Market',       yield: 1.4,  er: 0.03, downturnBeta: 1.00, avgCapture: 100, bullCapture: 100, incomeType: 'qualified', accountRec: 'either' },
-  'IVV':   { name: 'iShares Core S&P 500',              yield: 1.3,  er: 0.03, downturnBeta: 1.00, avgCapture: 100, bullCapture: 100, incomeType: 'qualified', accountRec: 'either' },
-  'CONY':  { name: 'YieldMax COIN Option Income',       yield: 60,   er: 0.99, downturnBeta: 1.30, avgCapture: 70,  bullCapture: 40,  incomeType: 'ordinary',  accountRec: 'roth'   },
-  'TSLY':  { name: 'YieldMax TSLA Option Income',       yield: 55,   er: 0.99, downturnBeta: 1.20, avgCapture: 65,  bullCapture: 35,  incomeType: 'ordinary',  accountRec: 'roth'   },
-  'MSFO':  { name: 'YieldMax MSFT Option Income',       yield: 18,   er: 0.99, downturnBeta: 0.95, avgCapture: 70,  bullCapture: 45,  incomeType: 'ordinary',  accountRec: 'roth'   },
-  'NVDY':  { name: 'YieldMax NVDA Option Income',       yield: 65,   er: 0.99, downturnBeta: 1.25, avgCapture: 65,  bullCapture: 35,  incomeType: 'ordinary',  accountRec: 'roth'   },
-  'AMZY':  { name: 'YieldMax AMZN Option Income',       yield: 22,   er: 0.99, downturnBeta: 1.00, avgCapture: 68,  bullCapture: 42,  incomeType: 'ordinary',  accountRec: 'roth'   },
-  'GOOGY': { name: 'YieldMax GOOGL Option Income',      yield: 18,   er: 0.99, downturnBeta: 0.95, avgCapture: 68,  bullCapture: 42,  incomeType: 'ordinary',  accountRec: 'roth'   },
-  'YMAG':  { name: 'YieldMax Magnificent 7 Fund',       yield: 35,   er: 0.99, downturnBeta: 1.10, avgCapture: 68,  bullCapture: 40,  incomeType: 'ordinary',  accountRec: 'roth'   },
-  'YMAX':  { name: 'YieldMax Universe Fund',            yield: 30,   er: 0.99, downturnBeta: 1.05, avgCapture: 68,  bullCapture: 40,  incomeType: 'ordinary',  accountRec: 'roth'   },
-  'KLIP':  { name: 'KraneShares China Internet & CC',   yield: 25,   er: 0.95, downturnBeta: 1.10, avgCapture: 70,  bullCapture: 45,  incomeType: 'ordinary',  accountRec: 'roth'   },
-  'FEPI':  { name: 'REX FANG & Innovation Equity IP',   yield: 25,   er: 0.65, downturnBeta: 1.05, avgCapture: 75,  bullCapture: 45,  incomeType: 'mixed',     accountRec: 'roth'   },
-  'GPIQ':  { name: 'Goldman Sachs Nasdaq-100 CC',       yield: 12,   er: 0.29, downturnBeta: 0.95, avgCapture: 85,  bullCapture: 65,  incomeType: 'ordinary',  accountRec: 'roth'   },
-  'GPIX':  { name: 'Goldman Sachs S&P 500 CC',          yield: 10,   er: 0.29, downturnBeta: 0.85, avgCapture: 85,  bullCapture: 65,  incomeType: 'ordinary',  accountRec: 'roth'   },
-  'AGG':   { name: 'iShares Core US Aggregate Bond',    yield: 3.8,  er: 0.03, downturnBeta: 0.10, avgCapture: 20,  bullCapture: 10,  incomeType: 'ordinary',  accountRec: 'ira'    },
-  'BND':   { name: 'Vanguard Total Bond Market',         yield: 3.7,  er: 0.03, downturnBeta: 0.10, avgCapture: 20,  bullCapture: 10,  incomeType: 'ordinary',  accountRec: 'ira'    },
-  'NUSI':  { name: 'Nationwide Nasdaq-100 Risk-Managed', yield: 7.5,  er: 0.68, downturnBeta: 0.60, avgCapture: 65,  bullCapture: 40,  incomeType: 'mixed',     accountRec: 'roth'   },
-  'PFFD':  { name: 'Global X US Preferred ETF',          yield: 6.5,  er: 0.23, downturnBeta: 0.60, avgCapture: 50,  bullCapture: 35,  incomeType: 'ordinary',  accountRec: 'roth'   },
-  'O':     { name: 'Realty Income Corp',                 yield: 5.6,  er: 0,    downturnBeta: 0.70, avgCapture: 60,  bullCapture: 45,  incomeType: 'ordinary',  accountRec: 'roth'   },
-  'MAIN':  { name: 'Main Street Capital',                yield: 6.8,  er: 0,    downturnBeta: 0.80, avgCapture: 75,  bullCapture: 60,  incomeType: 'ordinary',  accountRec: 'roth'   },
+  'QQQI':  { name: 'NEOS Nasdaq-100 High Income',        yield: 14.2, er: 0.68, downturnBeta: 1.00, avgCapture: 90,  bullCapture: 55,  incomeType: 'mixed',     accountRec: 'roth'      },
+  'SPYI':  { name: 'NEOS S&P 500 High Income',           yield: 11.8, er: 0.68, downturnBeta: 0.85, avgCapture: 85,  bullCapture: 60,  incomeType: 'mixed',     accountRec: 'roth'      },
+  'IWMI':  { name: 'NEOS Russell 2000 High Income',      yield: 18.0, er: 0.68, downturnBeta: 1.05, avgCapture: 85,  bullCapture: 55,  incomeType: 'mixed',     accountRec: 'roth'      },
+  'JEPI':  { name: 'JPMorgan Equity Premium Income',     yield: 8.2,  er: 0.35, downturnBeta: 0.70, avgCapture: 75,  bullCapture: 50,  incomeType: 'ordinary',  accountRec: 'roth'      },
+  'JEPQ':  { name: 'JPMorgan Nasdaq Equity Premium',     yield: 11.0, er: 0.35, downturnBeta: 0.90, avgCapture: 82,  bullCapture: 68,  incomeType: 'ordinary',  accountRec: 'roth'      },
+  'DIVO':  { name: 'Amplify CWP Enhanced Div Income',    yield: 4.8,  er: 0.55, downturnBeta: 0.75, avgCapture: 80,  bullCapture: 70,  incomeType: 'qualified', accountRec: 'either'    },
+  'QYLD':  { name: 'Global X Nasdaq 100 Covered Call',   yield: 11.0, er: 0.60, downturnBeta: 0.90, avgCapture: 60,  bullCapture: 30,  incomeType: 'return',    accountRec: 'brokerage' },
+  'XYLD':  { name: 'Global X S&P 500 Covered Call',      yield: 9.5,  er: 0.60, downturnBeta: 0.80, avgCapture: 60,  bullCapture: 35,  incomeType: 'return',    accountRec: 'brokerage' },
+  'RYLD':  { name: 'Global X Russell 2000 Covered Call', yield: 12.0, er: 0.60, downturnBeta: 0.95, avgCapture: 55,  bullCapture: 30,  incomeType: 'return',    accountRec: 'brokerage' },
+  'SCHD':  { name: 'Schwab US Dividend Equity',          yield: 3.5,  er: 0.06, downturnBeta: 0.80, avgCapture: 90,  bullCapture: 80,  incomeType: 'qualified', accountRec: 'either'    },
+  'VYM':   { name: 'Vanguard High Dividend Yield',       yield: 2.9,  er: 0.06, downturnBeta: 0.82, avgCapture: 88,  bullCapture: 78,  incomeType: 'qualified', accountRec: 'either'    },
+  'DVY':   { name: 'iShares Select Dividend',            yield: 4.2,  er: 0.38, downturnBeta: 0.78, avgCapture: 80,  bullCapture: 65,  incomeType: 'qualified', accountRec: 'either'    },
+  'SPY':   { name: 'SPDR S&P 500 ETF',                   yield: 1.3,  er: 0.09, downturnBeta: 1.00, avgCapture: 100, bullCapture: 100, incomeType: 'qualified', accountRec: 'either'    },
+  'VOO':   { name: 'Vanguard S&P 500 ETF',               yield: 1.3,  er: 0.03, downturnBeta: 1.00, avgCapture: 100, bullCapture: 100, incomeType: 'qualified', accountRec: 'either'    },
+  'IVV':   { name: 'iShares Core S&P 500 ETF',           yield: 1.3,  er: 0.03, downturnBeta: 1.00, avgCapture: 100, bullCapture: 100, incomeType: 'qualified', accountRec: 'either'    },
+  'RSP':   { name: 'Invesco S&P 500 Equal Weight',       yield: 1.6,  er: 0.20, downturnBeta: 0.95, avgCapture: 98,  bullCapture: 95,  incomeType: 'qualified', accountRec: 'either'    },
+  'QQQ':   { name: 'Invesco Nasdaq-100 ETF',             yield: 0.6,  er: 0.20, downturnBeta: 1.00, avgCapture: 100, bullCapture: 100, incomeType: 'qualified', accountRec: 'either'    },
+  'VTI':   { name: 'Vanguard Total Stock Market',        yield: 1.4,  er: 0.03, downturnBeta: 1.00, avgCapture: 100, bullCapture: 100, incomeType: 'qualified', accountRec: 'either'    },
+  'AGG':   { name: 'iShares Core US Aggregate Bond',     yield: 3.8,  er: 0.03, downturnBeta: 0.10, avgCapture: 20,  bullCapture: 10,  incomeType: 'ordinary',  accountRec: 'ira'       },
+  'BND':   { name: 'Vanguard Total Bond Market',         yield: 3.7,  er: 0.03, downturnBeta: 0.10, avgCapture: 20,  bullCapture: 10,  incomeType: 'ordinary',  accountRec: 'ira'       },
+  'NUSI':  { name: 'Nationwide Nasdaq-100 Risk-Managed', yield: 7.5,  er: 0.68, downturnBeta: 0.60, avgCapture: 65,  bullCapture: 40,  incomeType: 'mixed',     accountRec: 'roth'      },
+  'PFFD':  { name: 'Global X US Preferred ETF',          yield: 6.5,  er: 0.23, downturnBeta: 0.60, avgCapture: 50,  bullCapture: 35,  incomeType: 'ordinary',  accountRec: 'roth'      },
+  'O':     { name: 'Realty Income Corp',                 yield: 5.6,  er: 0.00, downturnBeta: 0.70, avgCapture: 60,  bullCapture: 45,  incomeType: 'ordinary',  accountRec: 'roth'      },
+  'MAIN':  { name: 'Main Street Capital',                yield: 6.8,  er: 0.00, downturnBeta: 0.80, avgCapture: 75,  bullCapture: 60,  incomeType: 'ordinary',  accountRec: 'roth'      },
 };
 
-/* ── Yahoo Finance fetch via CORS proxy (same method as Market Bottom Dashboard) ── */
+const COLORS = ['#c8a96e','#5cb8a0','#8b7fd4','#e05c8a','#4ab8d4'];
+const COLOR_NAMES = ['--c0','--c1','--c2','--c3','--c4'];
+const NUM_INSTRUMENTS = 5;
+
+let instruments = [];
+let currentScenario = 'down';
+let currentView = 'both';
+let currentRecovery = 'grind';
+let START = 10000;
+let chart;
+
+// ════════════════════════════════════════════
+// TICKER LOOKUP (Yahoo Finance + local DB)
+// ════════════════════════════════════════════
+function getTickerList() {
+  try {
+    var edits = JSON.parse(sessionStorage.getItem('etf_edits') || 'null');
+    if (edits) {
+      var merged = Object.assign({}, TICKER_DB);
+      Object.keys(edits).forEach(function(t) {
+        if (edits[t] === null) delete merged[t];
+        else merged[t] = edits[t];
+      });
+      return merged;
+    }
+  } catch(e) {}
+  return TICKER_DB;
+}
+
 async function yfetch(symbol) {
-  var base = 'https://query1.finance.yahoo.com/v8/finance/chart/'
-    + encodeURIComponent(symbol)
-    + '?interval=1d&range=300d&includePrePost=false';
-  var urls = [
-    base,
-    'https://api.allorigins.win/raw?url=' + encodeURIComponent(base),
-    'https://corsproxy.io/?' + encodeURIComponent(base)
-  ];
+  var base = 'https://query1.finance.yahoo.com/v8/finance/chart/' + encodeURIComponent(symbol) + '?interval=1d&range=300d&includePrePost=false';
+  var urls = [base, 'https://api.allorigins.win/raw?url=' + encodeURIComponent(base), 'https://corsproxy.io/?' + encodeURIComponent(base)];
   for (var i = 0; i < urls.length; i++) {
-    try {
-      var r = await fetch(urls[i]);
-      if (!r.ok) continue;
-      var j = await r.json();
-      if (j && j.chart && j.chart.result && j.chart.result[0]) return j;
-    } catch(e) { /* try next proxy */ }
+    try { var r = await fetch(urls[i]); if (!r.ok) continue; var j = await r.json(); if (j && j.chart && j.chart.result && j.chart.result[0]) return j; } catch(e) {}
   }
   return null;
 }
 
-/* ── Fetch summary data (name, trailing yield, ER) from Yahoo quoteSummary ── */
 async function yfetchSummary(symbol) {
-  var base = 'https://query1.finance.yahoo.com/v10/finance/quoteSummary/'
-    + encodeURIComponent(symbol)
-    + '?modules=summaryDetail,assetProfile,defaultKeyStatistics,fundProfile';
-  var urls = [
-    base,
-    'https://api.allorigins.win/raw?url=' + encodeURIComponent(base),
-    'https://corsproxy.io/?' + encodeURIComponent(base)
-  ];
+  var base = 'https://query1.finance.yahoo.com/v10/finance/quoteSummary/' + encodeURIComponent(symbol) + '?modules=summaryDetail,assetProfile,defaultKeyStatistics,fundProfile';
+  var urls = [base, 'https://api.allorigins.win/raw?url=' + encodeURIComponent(base), 'https://corsproxy.io/?' + encodeURIComponent(base)];
   for (var i = 0; i < urls.length; i++) {
-    try {
-      var r = await fetch(urls[i]);
-      if (!r.ok) continue;
-      var j = await r.json();
-      if (j && j.quoteSummary && j.quoteSummary.result) return j.quoteSummary.result[0];
-    } catch(e) { /* try next */ }
+    try { var r = await fetch(urls[i]); if (!r.ok) continue; var j = await r.json(); if (j && j.quoteSummary && j.quoteSummary.result) return j.quoteSummary.result[0]; } catch(e) {}
   }
   return null;
 }
@@ -1040,33 +1027,23 @@ function fillTickerFields(i, data) {
   var bullEl  = document.getElementById('bullcap_' + i);
   var incEl   = document.getElementById('inctype_' + i);
   var accEl   = document.getElementById('accrec_'  + i);
-  if (nameEl  && !nameEl.value  && data.name)          nameEl.value  = data.name;
+  if (nameEl  && !nameEl.value  && data.name)  nameEl.value  = data.name;
   if (yieldEl && data.yield  != null) { yieldEl.value = data.yield;  yieldEl.style.color = 'var(--accent)'; setTimeout(function(){ yieldEl.style.color = ''; }, 2000); }
   if (erEl    && data.er     != null) { erEl.value    = data.er;     erEl.style.color    = 'var(--accent)'; setTimeout(function(){ erEl.style.color    = ''; }, 2000); }
-  if (betaEl  && data.downturnBeta != null) betaEl.value = data.downturnBeta;
-  if (avgEl   && data.avgCapture   != null) avgEl.value  = data.avgCapture;
-  if (bullEl  && data.bullCapture  != null) bullEl.value = data.bullCapture;
-  if (incEl   && data.incomeType)           incEl.value  = data.incomeType;
-  if (accEl   && data.accountRec)           accEl.value  = data.accountRec;
+  if (betaEl  && data.downturnBeta != null) betaEl.value  = data.downturnBeta;
+  if (avgEl   && data.avgCapture   != null) avgEl.value   = data.avgCapture;
+  if (bullEl  && data.bullCapture  != null) bullEl.value  = data.bullCapture;
+  if (incEl   && data.incomeType)           incEl.value   = data.incomeType;
+  if (accEl   && data.accountRec)           accEl.value   = data.accountRec;
 }
 
-function setLookupStatus(i, msg, color) {
-  var nameEl = document.getElementById('name_' + i);
-  if (nameEl && !nameEl.value) {
-    nameEl.placeholder = msg;
-    nameEl.style.color = color || '';
-  }
+function setLookupStatus(i, msg) {
+  var nameEl  = document.getElementById('name_'  + i);
   var yieldEl = document.getElementById('yield_' + i);
-  var erEl    = document.getElementById('er_' + i);
-  if (msg === '...') {
-    if (yieldEl && !yieldEl.value) yieldEl.placeholder = '...';
-    if (erEl    && !erEl.value)    erEl.placeholder    = '...';
-  } else {
-    if (yieldEl) yieldEl.placeholder = 'Yield%';
-    if (erEl)    erEl.placeholder    = 'ER%';
-    if (nameEl)  nameEl.placeholder  = 'Description (optional)';
-    if (nameEl)  nameEl.style.color  = '';
-  }
+  var erEl    = document.getElementById('er_'    + i);
+  if (nameEl && !nameEl.value) nameEl.placeholder = msg || 'Description (optional)';
+  if (yieldEl) yieldEl.placeholder = msg ? '...' : 'Yield%';
+  if (erEl)    erEl.placeholder    = msg ? '...' : 'ER%';
 }
 
 async function autoFillTicker(i) {
@@ -1075,1468 +1052,60 @@ async function autoFillTicker(i) {
   var t = tickerEl.value.trim().toUpperCase();
   tickerEl.value = t;
   if (!t) return;
-
-  // 1. Check local DB first — instant, no network needed
-  if (TICKER_DB[t]) {
-    fillTickerFields(i, TICKER_DB[t]);
-    return;
-  }
-
-  // 2. Unknown ticker — fetch live from Yahoo Finance
+  var db = getTickerList();
+  if (db[t]) { fillTickerFields(i, db[t]); return; }
   setLookupStatus(i, 'Looking up ' + t + '...');
-
   try {
-    // Fetch both chart data (for trailing yield calc) and summary (for name, ER)
-    var [chartJ, summaryJ] = await Promise.all([yfetch(t), yfetchSummary(t)]);
-
-    if (!chartJ && !summaryJ) {
-      setLookupStatus(i, t + ' not found — enter manually');
-      return;
-    }
-
+    var results = await Promise.all([yfetch(t), yfetchSummary(t)]);
+    var chartJ = results[0]; var summaryJ = results[1];
+    if (!chartJ && !summaryJ) { setLookupStatus(i, t + ' not found'); return; }
     var liveData = {};
-
-    // Extract name from summary
     if (summaryJ) {
-      var fp = summaryJ.fundProfile || {};
-      var sp = summaryJ.summaryDetail || {};
-      var ks = summaryJ.defaultKeyStatistics || {};
-      liveData.name = fp.longName || fp.shortName || ks.longName || '';
-      // Expense ratio from fund profile (annualReportExpenseRatio or totalExpenseRatio)
-      var erRaw = (fp.annualReportExpenseRatio && fp.annualReportExpenseRatio.raw) ||
-                  (fp.totalExpenseRatio && fp.totalExpenseRatio.raw) || null;
+      var fp = summaryJ.fundProfile || {}; var sp = summaryJ.summaryDetail || {};
+      liveData.name = fp.longName || fp.shortName || '';
+      var erRaw = (fp.annualReportExpenseRatio && fp.annualReportExpenseRatio.raw) || (fp.totalExpenseRatio && fp.totalExpenseRatio.raw) || null;
       if (erRaw != null) liveData.er = parseFloat((erRaw * 100).toFixed(2));
-      // Trailing yield from summaryDetail
-      var yRaw = (sp.trailingAnnualDividendYield && sp.trailingAnnualDividendYield.raw) ||
-                 (sp.dividendYield && sp.dividendYield.raw) || null;
+      var yRaw = (sp.trailingAnnualDividendYield && sp.trailingAnnualDividendYield.raw) || (sp.dividendYield && sp.dividendYield.raw) || null;
       if (yRaw != null) liveData.yield = parseFloat((yRaw * 100).toFixed(2));
     }
-
-    // If yield not in summary, compute from chart (trailing 12mo divs / current price)
     if (liveData.yield == null && chartJ) {
-      var res    = chartJ.chart.result[0];
-      var meta   = res.meta || {};
-      var events = res.events || {};
-      var divs   = events.dividends ? Object.values(events.dividends) : [];
-      var price  = meta.regularMarketPrice || 0;
+      var res = chartJ.chart.result[0]; var meta = res.meta || {};
+      var events = res.events || {}; var divs = events.dividends ? Object.values(events.dividends) : [];
+      var price = meta.regularMarketPrice || 0;
       if (divs.length && price > 0) {
-        var now   = Date.now() / 1000;
-        var yr    = now - 365 * 86400;
-        var ttmDiv = divs.filter(function(d){ return d.date > yr; })
-                        .reduce(function(s,d){ return s + d.amount; }, 0);
+        var now = Date.now() / 1000; var yr = now - 365 * 86400;
+        var ttmDiv = divs.filter(function(d){ return d.date > yr; }).reduce(function(s,d){ return s + d.amount; }, 0);
         if (ttmDiv > 0) liveData.yield = parseFloat((ttmDiv / price * 100).toFixed(2));
       }
     }
-
-    // Use TICKER_DB defaults for behavioral fields if we have a partial match
-    var dbFallback = { downturnBeta: 1.0, avgCapture: 85, bullCapture: 65, incomeType: 'ordinary', accountRec: 'roth' };
-    var merged = Object.assign({}, dbFallback, liveData);
-
-    if (merged.yield != null || merged.name) {
-      fillTickerFields(i, merged);
-      setLookupStatus(i, '');
-    } else {
-      setLookupStatus(i, 'No data found — enter manually');
-    }
-  } catch(e) {
-    console.warn('Live lookup failed for', t, e);
-    setLookupStatus(i, 'Lookup failed — enter manually');
-  }
-}
-
-
-const COLOR_NAMES = ['--c0','--c1','--c2','--c3'];
-const NUM_INSTRUMENTS = 5;
-
-let instruments = []; // filled at runtime
-let currentScenario = 'down';
-let currentView = 'both';
-let currentRecovery = 'grind';
-let START = 10000;
-let chart;
-
-// Build setup cards
-function buildSetupCards() {
-  const container = document.getElementById('instrumentCards');
-  const empty = { ticker: '', name: '', yield: 0, er: 0, downturnBeta: 1.00, avgCapture: 1.00, bullCapture: 1.00, incomeType: 'ordinary', accountRec: 'roth' };
-
-  // Load saved state - validate it has sane values
-  const saved = (() => {
-    try {
-      const raw = JSON.parse(sessionStorage.getItem('projector_rows') || 'null');
-      if (!Array.isArray(raw)) return null;
-      // Validate: avgCapture should be <= 2 (fractional) not 100 (old corrupt data)
-      const isCorrupt = raw.some(r => r && (r.avgCapture > 2 || r.bullCapture > 2));
-      if (isCorrupt) { sessionStorage.removeItem('projector_rows'); return null; }
-      return raw;
-    } catch(e) { return null; }
-  })();
-  const defaults = Array.from({length: 5}, (_, i) => saved && saved[i] ? saved[i] : {...empty});
-
-  const rowColors = ['#c8a96e','#5cb8a0','#8b7fd4','#e05c8a','#4ab8d4'];
-
-  // Rebuild everything including the header
-  container.innerHTML = `<div class="instrument-row-header">
-    <span>#</span><span>Ticker</span><span>Description</span><span style="color:var(--accent)">Yield %</span><span style="color:var(--accent)">ER %</span><span>More</span>
-  </div>` + defaults.map((d, i) => `
-    <div class="instrument-row" id="irow_${i}">
-      <div class="row-num">
-        <span class="color-dot" style="background:${rowColors[i]}"></span>
-        ${i+1}
-      </div>
-      <div class="row-ticker">
-        <input type="text" id="ticker_${i}" value="${d.ticker}" placeholder="TICKER" maxlength="10" style="text-transform:uppercase" tabindex="${i+1}" oninput="this.value=this.value.toUpperCase()" onblur="autoFillTicker(${i})">
-      </div>
-      <div class="row-desc">
-        <input type="text" id="name_${i}" value="${d.name}" placeholder="Description (optional)" tabindex="-1">
-      </div>
-      <div class="row-yield">
-        <input type="number" id="yield_${i}" value="${d.yield}" min="0" max="100" step="0.1" placeholder="Yield%" tabindex="-1">
-      </div>
-      <div class="row-er">
-        <input type="number" id="er_${i}" value="${d.er}" min="0" max="5" step="0.01" placeholder="ER%" tabindex="-1">
-      </div>
-      <div class="row-action">
-        <button type="button" class="vars-toggle row-vars-btn" id="vtoggle_${i}" onclick="toggleVars(${i})">+ More</button>
-      </div>
-      <div class="vars-drawer row-drawer" id="vdrawer_${i}">
-        <div class="drawer-inner">
-          <div class="field-row">
-            <div class="field">
-              <label>Downturn Beta</label>
-              <input type="number" id="beta_${i}" value="${d.downturnBeta}" min="0" max="2" step="0.05">
-              <div class="hint">1.0 = full market drop</div>
-            </div>
-            <div class="field">
-              <label>Avg Mkt Capture (%)</label>
-              <input type="number" id="avgcap_${i}" value="${d.avgCapture * 100}" min="0" max="150" step="1">
-            </div>
-            <div class="field">
-              <label>Bull Capture (%)</label>
-              <input type="number" id="bullcap_${i}" value="${d.bullCapture * 100}" min="0" max="150" step="1">
-            </div>
-            <div class="field">
-              <label>Income Type</label>
-              <select id="inctype_${i}">
-                <option value="ordinary"  ${d.incomeType==='ordinary'  ? 'selected' : ''}>Ordinary Income</option>
-                <option value="qualified" ${d.incomeType==='qualified' ? 'selected' : ''}>Qualified Divs</option>
-                <option value="mixed"     ${d.incomeType==='mixed'     ? 'selected' : ''}>Mixed (60/40)</option>
-                <option value="return"    ${d.incomeType==='return'    ? 'selected' : ''}>Return of Capital</option>
-              </select>
-            </div>
-            <div class="field">
-              <label>Best Account</label>
-              <select id="accrec_${i}">
-                <option value="roth"      ${d.accountRec==='roth'      ? 'selected' : ''}>Roth IRA</option>
-                <option value="ira"       ${d.accountRec==='ira'       ? 'selected' : ''}>Traditional IRA</option>
-                <option value="brokerage" ${d.accountRec==='brokerage' ? 'selected' : ''}>Brokerage OK</option>
-                <option value="either"    ${d.accountRec==='either'    ? 'selected' : ''}>Either</option>
-              </select>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  `).join('');
-}
-
-function updateRowLabel(i) {
-  // nothing needed — ticker updates live via input binding
-}
-
-// ── AUTOCOMPLETE ──────────────────────────────────────────
-function getTickerList() {
-  // Merge built-in TICKER_DB with any session edits
-  try {
-    const edits = JSON.parse(sessionStorage.getItem('etf_edits') || 'null');
-    if (edits) return Object.assign({}, TICKER_DB, edits);
-  } catch(e) {}
-  return TICKER_DB;
-}
-
-!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<meta http-equiv="Pragma" content="no-cache">
-<meta http-equiv="Expires" content="0">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Investment Projector v4</title>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
-<link href="https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,300;0,400;0,500;1,300&family=Cormorant+Garamond:wght@600;700&display=swap" rel="stylesheet">
-<style>
-:root {
-  --accent: #c8a96e;
-  --accent2: #8fb8d4;
-  --danger: #e05c5c;
-  --success: #5cb88a;
-}
-
-/* Light mode (default) */
-body {
-  --bg: #f4f5f7;
-  --surface: #ffffff;
-  --surface2: #eef0f3;
-  --border: rgba(0,0,0,0.08);
-  --border2: rgba(0,0,0,0.15);
-  --text: #111318;
-  --muted: #5a6170;
-}
-
-/* Dark mode */
-body.dark-mode {
-  --bg: #080a0d;
-  --surface: #0f1215;
-  --surface2: #161b20;
-  --border: rgba(255,255,255,0.07);
-  --border2: rgba(255,255,255,0.15);
-  --text: #d4dbe3;
-  --muted: #556170;
-}
-
-* { box-sizing: border-box; margin: 0; padding: 0; }
-
-body {
-  background: var(--bg);
-  color: var(--text);
-  font-family: 'DM Mono', monospace;
-  min-height: 100vh;
-  padding: 0;
-  transition: background 0.2s, color 0.2s;
-}
-
-/* ── SETUP SCREEN ── */
-#setupScreen {
-  min-height: 100vh;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 40px 24px;
-}
-
-.setup-header {
-  text-align: center;
-  margin-bottom: 48px;
-}
-
-.setup-header h1 {
-  font-family: 'Cormorant Garamond', serif;
-  font-size: clamp(2rem, 5vw, 3.2rem);
-  font-weight: 700;
-  color: var(--accent);
-  letter-spacing: 0.02em;
-  line-height: 1.1;
-  margin-bottom: 8px;
-}
-
-.setup-header p {
-  font-size: 0.72rem;
-  color: var(--muted);
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-}
-
-.setup-grid {
-  display: flex;
-  flex-direction: column;
-  gap: 0;
-  width: 100%;
-  max-width: 960px;
-  margin-bottom: 32px;
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  overflow: hidden;
-}
-
-.instrument-row {
-  display: grid;
-  grid-template-columns: 36px 110px 1fr 70px 60px auto;
-  align-items: center;
-  gap: 0;
-  border-bottom: 1px solid var(--border);
-  background: var(--surface);
-  transition: background 0.15s;
-}
-.instrument-row:last-child { border-bottom: none; }
-.instrument-row:nth-child(even) { background: var(--surface2); }
-.instrument-row:focus-within { background: #0d1318; }
-
-.row-num {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 4px;
-  padding: 12px 6px;
-  font-size: 0.6rem;
-  color: var(--muted);
-  flex-direction: column;
-  border-right: 1px solid var(--border);
-  height: 100%;
-}
-
-.row-ticker {
-  padding: 8px 10px;
-  border-right: 1px solid var(--border);
-}
-.row-ticker input {
-  width: 100%;
-  background: transparent;
-  border: none;
-  color: var(--text);
-  font-family: 'DM Mono', monospace;
-  font-size: 0.85rem;
-  font-weight: 500;
-  letter-spacing: 0.05em;
-  outline: none;
-  padding: 2px 0;
-}
-.row-ticker input::placeholder { color: var(--border2); }
-
-.row-desc {
-  padding: 8px 12px;
-  border-right: 1px solid var(--border);
-}
-.row-desc input {
-  width: 100%;
-  background: transparent;
-  border: none;
-  color: var(--muted);
-  font-family: 'DM Mono', monospace;
-  font-size: 0.72rem;
-  outline: none;
-  padding: 2px 0;
-}
-.row-desc input::placeholder { color: var(--border); }
-
-.row-yield, .row-er {
-  padding: 4px 6px;
-  border-right: 1px solid var(--border);
-}
-.row-yield input, .row-er input {
-  width: 100%;
-  background: transparent;
-  border: none;
-  color: var(--muted);
-  font-family: 'DM Mono', monospace;
-  font-size: 0.75rem;
-  outline: none;
-  padding: 2px 0;
-  text-align: right;
-}
-.row-yield input:focus, .row-er input:focus { color: var(--text); }
-
-.row-action {
-  padding: 8px 10px;
-  display: flex;
-  align-items: center;
-}
-
-.row-vars-btn {
-  margin-top: 0 !important;
-  padding: 4px 10px !important;
-  font-size: 0.6rem !important;
-  width: auto !important;
-  white-space: nowrap;
-}
-
-.vars-drawer.row-drawer {
-  grid-column: 1 / -1;
-  border-top: 1px solid var(--border);
-}
-
-.drawer-inner {
-  padding: 14px 16px;
-  background: var(--surface2);
-}
-
-.drawer-inner .field-row {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
-  gap: 10px;
-  margin-bottom: 0;
-}
-
-/* Table header row */
-.instrument-row-header {
-  display: grid;
-  grid-template-columns: 36px 110px 1fr 70px 60px auto;
-  gap: 0;
-  background: var(--bg);
-  border-bottom: 1px solid var(--border2);
-  padding: 6px 0;
-}
-.instrument-row-header span {
-  font-size: 0.55rem;
-  color: var(--muted);
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  padding: 0 10px;
-}
-.instrument-row-header span:first-child { text-align: center; padding: 0 6px; }
-
-.color-dot {
-  width: 8px; height: 8px;
-  border-radius: 50%;
-  display: inline-block;
-  flex-shrink: 0;
-}
-
-.field-row {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 10px;
-  margin-bottom: 10px;
-}
-.field-row.full { grid-template-columns: 1fr; }
-
-.field label {
-  display: block;
-  font-size: 0.58rem;
-  color: var(--muted);
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  margin-bottom: 5px;
-}
-
-.field input, .field select {
-  width: 100%;
-  background: var(--surface2);
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  color: var(--text);
-  font-family: 'DM Mono', monospace;
-  font-size: 0.82rem;
-  padding: 8px 10px;
-  outline: none;
-  transition: border-color 0.15s;
-}
-.field input:focus, .field select:focus { border-color: var(--accent); }
-.field input::placeholder { color: var(--muted); }
-
-.field .hint {
-  font-size: 0.58rem;
-  color: var(--muted);
-  margin-top: 4px;
-  font-style: italic;
-}
-
-.global-settings {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  padding: 24px;
-  width: 100%;
-  max-width: 960px;
-  margin-bottom: 28px;
-}
-
-.global-settings-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  cursor: pointer;
-}
-
-.global-settings h3 {
-  font-size: 0.65rem;
-  color: var(--muted);
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  margin-bottom: 16px;
-}
-
-.global-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
-  gap: 12px;
-}
-
-.setup-top-bar {
-  display: flex;
-  gap: 10px;
-  justify-content: center;
-  margin-bottom: 14px;
-  width: 100%;
-  max-width: 960px;
-}
-
-.top-bar-btn {
-  background: var(--surface);
-  border: 1px solid var(--border2);
-  color: var(--muted);
-  border-radius: 6px;
-  font-family: 'DM Mono', monospace;
-  font-size: 0.68rem;
-  letter-spacing: 0.08em;
-  padding: 8px 20px;
-  cursor: pointer;
-  transition: all 0.15s;
-  text-transform: uppercase;
-}
-.top-bar-btn:hover { border-color: var(--accent); color: var(--accent); }
-.top-bar-btn.danger:hover { border-color: var(--danger); color: var(--danger); }
-
-.clear-btn {
-  background: transparent;
-  border: 1px solid var(--border2);
-  color: var(--muted);
-  border-radius: 8px;
-  font-family: 'DM Mono', monospace;
-  font-size: 0.72rem;
-  letter-spacing: 0.08em;
-  padding: 14px 24px;
-  cursor: pointer;
-  transition: all 0.2s;
-  text-transform: uppercase;
-}
-.clear-btn:hover { border-color: var(--danger); color: var(--danger); }
-
-.run-btn {
-  background: var(--accent);
-  color: #080a0d;
-  border: none;
-  border-radius: 8px;
-  font-family: 'DM Mono', monospace;
-  font-size: 0.82rem;
-  font-weight: 500;
-  letter-spacing: 0.08em;
-  padding: 14px 48px;
-  cursor: pointer;
-  transition: all 0.2s;
-  text-transform: uppercase;
-}
-.run-btn:hover { background: #d9bc87; transform: translateY(-1px); box-shadow: 0 8px 24px rgba(200,169,110,0.2); }
-
-/* ── RESULTS SCREEN ── */
-#resultsScreen { display: none; padding: 28px 24px; max-width: 1100px; margin: 0 auto; }
-
-.results-header {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  flex-wrap: wrap;
-  gap: 12px;
-  margin-bottom: 24px;
-}
-
-.results-header h1 {
-  font-family: 'Cormorant Garamond', serif;
-  font-size: clamp(1.4rem, 3vw, 2rem);
-  color: var(--accent);
-  font-weight: 700;
-}
-
-.results-header .meta {
-  font-size: 0.65rem;
-  color: var(--muted);
-  margin-top: 4px;
-  letter-spacing: 0.08em;
-}
-
-.back-btn {
-  background: var(--surface);
-  border: 1px solid var(--border2);
-  color: var(--muted);
-  border-radius: 6px;
-  font-family: 'DM Mono', monospace;
-  font-size: 0.68rem;
-  padding: 8px 16px;
-  cursor: pointer;
-  transition: all 0.15s;
-  letter-spacing: 0.06em;
-}
-.back-btn:hover { color: var(--text); border-color: var(--accent); }
-
-.controls {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12px;
-  margin-bottom: 24px;
-}
-
-.control-group { display: flex; flex-direction: column; gap: 5px; }
-
-.control-group label {
-  font-size: 0.6rem;
-  color: var(--muted);
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-}
-
-.btn-group {
-  display: flex;
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  overflow: hidden;
-}
-
-.btn {
-  background: var(--surface);
-  color: var(--muted);
-  border: none;
-  border-right: 1px solid var(--border);
-  padding: 7px 14px;
-  font-family: 'DM Mono', monospace;
-  font-size: 0.68rem;
-  cursor: pointer;
-  transition: all 0.15s;
-  white-space: nowrap;
-}
-.btn:last-child { border-right: none; }
-.btn:hover { background: var(--border); color: var(--text); }
-.btn.active { background: var(--accent); color: #080a0d; font-weight: 500; }
-
-#recoveryGroup { display: flex; }
-
-.chart-wrap {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  padding: 20px 24px;
-  margin-bottom: 20px;
-}
-
-.chart-label {
-  font-size: 0.62rem;
-  color: var(--muted);
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  margin-bottom: 4px;
-}
-
-.chart-sub {
-  font-size: 0.68rem;
-  color: var(--accent);
-  margin-bottom: 16px;
-}
-
-canvas { max-height: 360px; }
-
-.cards {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-  gap: 14px;
-  margin-bottom: 20px;
-}
-
-.result-card {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  padding: 18px;
-  position: relative;
-}
-
-.result-card::before {
-  content: '';
-  position: absolute;
-  top: 0; left: 0; right: 0;
-  height: 2px;
-}
-
-.ticker-label {
-  font-size: 0.62rem;
-  letter-spacing: 0.15em;
-  color: var(--muted);
-  text-transform: uppercase;
-  margin-bottom: 12px;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.ticker-name { font-size: 1rem; color: var(--text); font-weight: 500; margin-bottom: 2px; }
-
-.vals-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 8px;
-  margin-top: 12px;
-}
-
-.val-block .vl { font-size: 0.55rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; }
-.val-block .vn { font-size: 1rem; font-weight: 500; margin-top: 2px; }
-.val-block .vs { font-size: 0.6rem; color: var(--muted); margin-top: 1px; }
-
-.divider { height: 1px; background: var(--border); margin: 12px 0; }
-
-.bottom-vals { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-
-.note-box {
-  background: var(--surface2);
-  border: 1px solid #5a2a10;
-  border-radius: 8px;
-  padding: 12px 16px;
-  font-size: 0.67rem;
-  color: #e08c5c;
-  line-height: 1.7;
-  margin-bottom: 20px;
-  grid-column: 1 / -1;
-}
-
-.tax-section {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  padding: 20px 24px;
-  margin-bottom: 20px;
-}
-
-.tax-section h3 {
-  font-family: 'Cormorant Garamond', serif;
-  font-size: 1.1rem;
-  color: var(--accent);
-  margin-bottom: 14px;
-}
-
-.tax-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 16px;
-}
-
-.tax-item .tax-ticker { font-size: 0.68rem; color: var(--accent); letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 5px; }
-.tax-item .tax-rec { font-size: 0.78rem; margin-bottom: 5px; }
-.tax-item .tax-desc { font-size: 0.64rem; color: var(--muted); line-height: 1.6; }
-
-.pill {
-  display: inline-block;
-  font-size: 0.56rem;
-  padding: 2px 7px;
-  border-radius: 3px;
-  margin: 2px 2px 0 0;
-}
-.pill.best  { background: rgba(92,184,138,0.15); color: var(--success); }
-.pill.mid   { background: rgba(143,184,212,0.15); color: var(--accent2); }
-.pill.worst { background: rgba(224,92,92,0.15); color: var(--danger); }
-
-.theme-btn {
-  position: absolute;
-  top: 20px;
-  right: 24px;
-  background: transparent;
-  border: 1px solid var(--border2);
-  color: var(--muted);
-  border-radius: 6px;
-  font-family: 'DM Mono', monospace;
-  font-size: 0.65rem;
-  padding: 5px 12px;
-  cursor: pointer;
-  transition: all 0.15s;
-  letter-spacing: 0.08em;
-}
-.theme-btn:hover { border-color: var(--accent); color: var(--accent); }
-
-/* Inputs and selects adapt to theme */
-input[type="text"], input[type="number"], select {
-  background: var(--surface2);
-  color: var(--text);
-  border: 1px solid var(--border2);
+    var merged = Object.assign({ downturnBeta: 1.0, avgCapture: 85, bullCapture: 65, incomeType: 'ordinary', accountRec: 'roth' }, liveData);
+    if (merged.yield != null || merged.name) { fillTickerFields(i, merged); setLookupStatus(i, ''); }
+    else setLookupStatus(i, 'No data — enter manually');
+  } catch(e) { setLookupStatus(i, 'Lookup failed'); }
 }
-input::placeholder { color: var(--muted); }
-
-.footer-note {
-  font-size: 0.6rem;
-  color: var(--muted);
-  text-align: center;
-  padding: 20px 0 8px;
-  line-height: 1.8;
-}
-
-/* ── INFO DRAWER ── */
-/* ── AUTOCOMPLETE ── */
-.autocomplete-wrap { position: relative; width: 100%; }
-.autocomplete-list {
-  position: absolute;
-  top: 100%;
-  left: 0;
-  right: 0;
-  background: var(--surface);
-  border: 1px solid var(--border2);
-  border-radius: 6px;
-  z-index: 1000;
-  max-height: 220px;
-  overflow-y: auto;
-  box-shadow: 0 4px 16px rgba(0,0,0,0.15);
-  display: none;
-}
-.autocomplete-list.open { display: block; }
-.ac-item {
-  padding: 7px 12px;
-  cursor: pointer;
-  font-size: 0.72rem;
-  display: flex;
-  gap: 10px;
-  align-items: baseline;
-  border-bottom: 1px solid var(--border);
-}
-.ac-item:last-child { border-bottom: none; }
-.ac-item:hover, .ac-item.selected { background: var(--surface2); }
-.ac-ticker { font-weight: 500; color: var(--accent); min-width: 52px; }
-.ac-name   { color: var(--muted); font-size: 0.65rem; flex: 1; }
-.ac-yield  { color: var(--text); font-size: 0.65rem; white-space: nowrap; }
-
-/* ── ETF MANAGER MODAL ── */
-.modal-overlay {
-  display: none;
-  position: fixed;
-  inset: 0;
-  background: rgba(0,0,0,0.45);
-  z-index: 2000;
-  align-items: center;
-  justify-content: center;
-}
-.modal-overlay.open { display: flex; }
-.etf-modal {
-  background: var(--surface);
-  border: 1px solid var(--border2);
-  border-radius: 12px;
-  width: min(720px, 95vw);
-  max-height: 85vh;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-}
-.etf-modal-head {
-  padding: 18px 24px 14px;
-  border-bottom: 1px solid var(--border);
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-.etf-modal-head h2 {
-  font-family: "Cormorant Garamond", serif;
-  font-size: 1.2rem;
-  color: var(--accent);
-  flex: 1;
-}
-.etf-modal-body {
-  flex: 1;
-  overflow-y: auto;
-  padding: 16px 24px;
-}
-.etf-table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 0.68rem;
-}
-.etf-table th {
-  text-align: left;
-  color: var(--muted);
-  font-size: 0.58rem;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  padding: 6px 8px;
-  border-bottom: 1px solid var(--border2);
-}
-.etf-table td {
-  padding: 5px 8px;
-  border-bottom: 1px solid var(--border);
-  vertical-align: middle;
-}
-.etf-table tr:last-child td { border-bottom: none; }
-.etf-table input, .etf-table select {
-  width: 100%;
-  background: transparent;
-  border: none;
-  color: var(--text);
-  font-family: "DM Mono", monospace;
-  font-size: 0.68rem;
-  padding: 2px 4px;
-  outline: none;
-  border-radius: 3px;
-}
-.etf-table input:focus, .etf-table select:focus {
-  background: var(--surface2);
-}
-.etf-table .ticker-cell { color: var(--accent); font-weight: 500; }
-.etf-del-btn {
-  background: none;
-  border: none;
-  color: var(--muted);
-  cursor: pointer;
-  font-size: 0.9rem;
-  padding: 2px 6px;
-  border-radius: 3px;
-}
-.etf-del-btn:hover { color: var(--danger); background: var(--surface2); }
-.etf-modal-foot {
-  padding: 14px 24px;
-  border-top: 1px solid var(--border);
-  display: flex;
-  gap: 10px;
-  align-items: center;
-}
-.etf-add-row {
-  display: grid;
-  grid-template-columns: 70px 1fr 60px 50px auto;
-  gap: 6px;
-  align-items: center;
-  padding: 10px 0 4px;
-}
-.etf-add-row input, .etf-add-row select {
-  background: var(--surface2);
-  border: 1px solid var(--border2);
-  border-radius: 4px;
-  padding: 5px 8px;
-  font-family: "DM Mono", monospace;
-  font-size: 0.68rem;
-  color: var(--text);
-  outline: none;
-}
-
-.vars-toggle {
-  display: block;
-  width: 100%;
-  background: transparent;
-  border: 1px solid var(--border2);
-  color: var(--muted);
-  border-radius: 4px;
-  font-family: 'DM Mono', monospace;
-  font-size: 0.65rem;
-  letter-spacing: 0.1em;
-  padding: 6px 10px;
-  cursor: pointer;
-  text-align: left;
-  margin-top: 12px;
-  transition: all 0.15s;
-}
-.vars-toggle:hover { border-color: var(--accent); color: var(--accent); }
-.vars-toggle.open  { border-color: var(--accent); color: var(--accent); }
-
-.vars-drawer {
-  display: none;
-  margin-top: 12px;
-}
-.vars-drawer.open { display: block; }
-
-.info-toggle {
-  display: block !important;
-  visibility: visible !important;
-  opacity: 1 !important;
-  width: 100%;
-  background: #c8a96e !important;
-  border: 2px solid #c8a96e;
-  color: #080a0d !important;
-  border-radius: 4px;
-  font-family: 'DM Mono', monospace;
-  font-size: 0.72rem;
-  font-weight: 500;
-  letter-spacing: 0.08em;
-  padding: 8px 12px;
-  cursor: pointer;
-  text-transform: uppercase;
-  text-align: center;
-  margin-top: 14px;
-}
-.info-toggle:hover { background: #d9bc87 !important; }
-.info-toggle.open  { background: #d9bc87 !important; }
-
-.info-drawer {
-  display: none;
-  margin-top: 12px;
-  padding-top: 12px;
-  border-top: 1px solid var(--border);
-  animation: drawerIn 0.18s ease;
-}
-.info-drawer.open { display: block; }
-
-@keyframes drawerIn {
-  from { opacity: 0; transform: translateY(-4px); }
-  to   { opacity: 1; transform: translateY(0); }
-}
-
-.info-row {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 8px 12px;
-  margin-bottom: 2px;
-}
-
-.info-item .il { font-size: 0.55rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; }
-.info-item .iv { font-size: 0.78rem; color: var(--text); margin-top: 2px; }
-
-.info-bar-wrap { margin-top: 8px; }
-.info-bar-label { font-size: 0.55rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 4px; display: flex; justify-content: space-between; }
-.info-bar-track { background: var(--border); border-radius: 3px; height: 5px; overflow: hidden; }
-.info-bar-fill  { height: 100%; border-radius: 3px; transition: width 0.4s ease; }
-</style>
-</head>
-<body>
-
-<!-- ══════════════════════════════════════════
-     SETUP SCREEN
-══════════════════════════════════════════ -->
-<div id="setupScreen">
-  <div class="setup-header">
-    <h1>Investment Projector</h1>
-    <p>5-year scenario modeler · net of fees · reinvest vs. spend</p>
-  </div>
-
-  <div class="setup-top-bar">
-    <button type="button" class="top-bar-btn" onclick="toggleGlobalVars()">⚙ Global Settings</button>
-    <button type="button" class="top-bar-btn" onclick="openEtfManager()">☰ ETF List</button>
-    <button type="button" class="top-bar-btn danger" onclick="clearTickers()">✕ Clear Tickers</button>
-    <button type="button" class="top-bar-btn" id="themeBtnSetup" onclick="toggleTheme()" style="margin-left:auto">☽ Dark</button>
-  </div>
-
-  <div class="global-settings">
-    <div class="vars-drawer" id="globalDrawer">
-      <div class="global-grid">
-        <div class="field">
-          <label>Starting Amount ($)</label>
-          <input type="number" id="startAmount" value="10000" min="100" step="100">
-        </div>
-        <div class="field">
-          <label>Downturn — Market Drop (%)</label>
-          <input type="number" id="downturnPct" value="20" min="1" max="80" step="1">
-          <div class="hint">Applied to both correlated markets yr 1</div>
-        </div>
-        <div class="field">
-          <label>Avg Scenario — Annual Return (%)</label>
-          <input type="number" id="avgReturn" value="5" min="1" max="30" step="0.5">
-        </div>
-        <div class="field">
-          <label>Bull Scenario — Annual Return (%)</label>
-          <input type="number" id="bullReturn" value="15" min="1" max="50" step="0.5">
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <div class="setup-grid" id="instrumentCards"></div>
-
-  <button class="run-btn" onclick="runProjection()">Run Projection →</button>
-</div>
-
-<!-- ETF Manager Modal -->
-<div class="modal-overlay" id="etfModal">
-  <div class="etf-modal">
-    <div class="etf-modal-head">
-      <h2>ETF / Ticker Library</h2>
-      <button class="top-bar-btn" onclick="closeEtfManager()">✕ Close</button>
-    </div>
-    <div class="etf-modal-body">
-      <div class="etf-add-row">
-        <input id="newTicker"  type="text"   placeholder="TICKER" maxlength="10" style="text-transform:uppercase">
-        <input id="newName"    type="text"   placeholder="Fund name">
-        <input id="newYield"   type="number" placeholder="Yield%" min="0" max="100" step="0.1">
-        <input id="newEr"      type="number" placeholder="ER%" min="0" max="5" step="0.01">
-        <button class="run-btn" style="padding:6px 14px;font-size:0.7rem" onclick="addEtfRow()">+ Add</button>
-      </div>
-      <table class="etf-table" id="etfTable">
-        <thead>
-          <tr>
-            <th>Ticker</th><th>Name</th><th>Yield%</th><th>ER%</th>
-            <th>Beta</th><th>Avg Cap%</th><th>Bull Cap%</th><th>Income</th><th>Account</th><th></th>
-          </tr>
-        </thead>
-        <tbody id="etfTableBody"></tbody>
-      </table>
-    </div>
-    <div class="etf-modal-foot">
-      <button class="run-btn" style="padding:8px 20px;font-size:0.72rem" onclick="saveEtfList()">Save Changes</button>
-      <span style="font-size:0.62rem;color:var(--muted)">Changes are saved to this browser session</span>
-    </div>
-  </div>
-</div>
-
-<!-- ══════════════════════════════════════════
-     RESULTS SCREEN
-══════════════════════════════════════════ -->
-<div id="resultsScreen">
-  <div class="results-header">
-    <button class="theme-btn" id="themeBtn" onclick="toggleTheme()">☽ Dark</button>
-    <div>
-      <h1>5-Year Projection</h1>
-      <div class="meta" id="resultsMeta"></div>
-    </div>
-    <button class="back-btn" onclick="goBack()">← Edit Inputs</button>
-  </div>
-
-  <div class="controls">
-    <div class="control-group">
-      <label>Scenario</label>
-      <div class="btn-group">
-        <button class="btn active" data-scenario="down" onclick="setScenario('down',this)">Downturn</button>
-        <button class="btn" data-scenario="avg" onclick="setScenario('avg',this)">Avg Market</button>
-        <button class="btn" data-scenario="bull" onclick="setScenario('bull',this)">Bull Run</button>
-      </div>
-    </div>
-    <div class="control-group" id="recoveryGroup">
-      <label>Recovery Speed <span style="color:#e08c5c;font-size:0.85em;">(downturn only)</span></label>
-      <div class="btn-group">
-        <button class="btn" data-recovery="vshape" onclick="setRecovery('vshape',this)">V-Shape 1yr</button>
-        <button class="btn active" data-recovery="grind" onclick="setRecovery('grind',this)">Grind 3yr</button>
-        <button class="btn" data-recovery="slog" onclick="setRecovery('slog',this)">Slog 5yr</button>
-      </div>
-    </div>
-    <div class="control-group">
-
-    </div>
-  </div>
-
-  <div class="chart-wrap">
-    <div class="chart-label">Portfolio Value Over Time</div>
-    <div class="chart-sub" id="scenarioDesc"></div>
-    <div id="sameParamsWarn" style="display:none;background:#2a1a0a;border:1px solid #c8a96e44;border-radius:6px;padding:8px 14px;font-size:0.65rem;color:#c8a96e;margin-bottom:10px;">All instruments have identical Yield% and ER% — lines overlap. Enter different values per ticker on the input screen.</div>
-    <canvas id="mainChart"></canvas>
-  </div>
-
-  <div class="cards" id="cards"></div>
-
-  <div class="tax-section">
-    <h3>Account Type Guidance</h3>
-    <div class="tax-grid" id="taxGrid"></div>
-    <p style="font-size:0.6rem;color:var(--muted);margin-top:12px;">This is general guidance, not personalized tax advice. Consult a tax advisor for your situation. High-income distributions in a traditional IRA are taxed as ordinary income on withdrawal — for funds with favorable cap gains treatment, this can be worse than a brokerage account.</p>
-  </div>
-
-  <div class="footer-note" id="footerNote"></div>
-</div>
 
-<script>
 // ════════════════════════════════════════════
-// INSTRUMENT SETUP
+// AUTOCOMPLETE
 // ════════════════════════════════════════════
-
-const COLORS = ['#c8a96e','#5cb8a0','#8b7fd4','#e05c8a','#4ab8d4'];
-
-// Known ticker data — auto-fills when user enters a recognized ticker
-const TICKER_DB = {
-  // High-income covered call ETFs
-  'QQQI':  { name: 'NEOS Nasdaq-100 High Income',       yield: 14.2, er: 0.68, downturnBeta: 1.00, avgCapture: 90,  bullCapture: 55,  incomeType: 'mixed',     accountRec: 'roth'   },
-  'SPYI':  { name: 'NEOS S&P 500 High Income',          yield: 11.8, er: 0.68, downturnBeta: 0.85, avgCapture: 85,  bullCapture: 60,  incomeType: 'mixed',     accountRec: 'roth'   },
-  'IWMI':  { name: 'NEOS Russell 2000 High Income',     yield: 18,   er: 0.68, downturnBeta: 1.05, avgCapture: 85,  bullCapture: 55,  incomeType: 'mixed',     accountRec: 'roth'   },
-  'JEPI':  { name: 'JPMorgan Equity Premium Income',    yield: 8.2,  er: 0.35, downturnBeta: 0.70, avgCapture: 75,  bullCapture: 50,  incomeType: 'ordinary',  accountRec: 'roth'   },
-  'JEPQ':  { name: 'JPMorgan Nasdaq Equity Premium',    yield: 11.0, er: 0.35, downturnBeta: 0.90, avgCapture: 82,  bullCapture: 68,  incomeType: 'ordinary',  accountRec: 'roth'   },
-  'DIVO':  { name: 'Amplify CWP Enhanced Div Income',   yield: 4.8,  er: 0.55, downturnBeta: 0.75, avgCapture: 80,  bullCapture: 70,  incomeType: 'qualified', accountRec: 'either' },
-  'QYLD':  { name: 'Global X Nasdaq 100 Covered Call',  yield: 11,   er: 0.60, downturnBeta: 0.90, avgCapture: 60,  bullCapture: 30,  incomeType: 'return',    accountRec: 'brokerage'},
-  'XYLD':  { name: 'Global X S&P 500 Covered Call',     yield: 9.5,  er: 0.60, downturnBeta: 0.80, avgCapture: 60,  bullCapture: 35,  incomeType: 'return',    accountRec: 'brokerage'},
-  'RYLD':  { name: 'Global X Russell 2000 Covered Call',yield: 12,   er: 0.60, downturnBeta: 0.95, avgCapture: 55,  bullCapture: 30,  incomeType: 'return',    accountRec: 'brokerage'},
-  'RSP':   { name: 'Invesco S&P 500 Equal Weight',      yield: 1.6,  er: 0.20, downturnBeta: 0.95, avgCapture: 98,  bullCapture: 95,  incomeType: 'qualified', accountRec: 'either' },
-  'SCHD':  { name: 'Schwab US Dividend Equity',         yield: 3.5,  er: 0.06, downturnBeta: 0.80, avgCapture: 90,  bullCapture: 80,  incomeType: 'qualified', accountRec: 'either' },
-  'VYM':   { name: 'Vanguard High Dividend Yield',      yield: 2.9,  er: 0.06, downturnBeta: 0.82, avgCapture: 88,  bullCapture: 78,  incomeType: 'qualified', accountRec: 'either' },
-  'DVY':   { name: 'iShares Select Dividend',           yield: 3.8,  er: 0.38, downturnBeta: 0.85, avgCapture: 82,  bullCapture: 72,  incomeType: 'qualified', accountRec: 'either' },
-  'DGRO':  { name: 'iShares Core Dividend Growth',      yield: 2.4,  er: 0.08, downturnBeta: 0.82, avgCapture: 92,  bullCapture: 85,  incomeType: 'qualified', accountRec: 'either' },
-  'QQQ':   { name: 'Invesco Nasdaq-100 ETF',            yield: 0.6,  er: 0.20, downturnBeta: 1.00, avgCapture: 100, bullCapture: 100, incomeType: 'qualified', accountRec: 'either' },
-  'SPY':   { name: 'SPDR S&P 500 ETF',                  yield: 1.3,  er: 0.09, downturnBeta: 1.00, avgCapture: 100, bullCapture: 100, incomeType: 'qualified', accountRec: 'either' },
-  'VOO':   { name: 'Vanguard S&P 500 ETF',              yield: 1.3,  er: 0.03, downturnBeta: 1.00, avgCapture: 100, bullCapture: 100, incomeType: 'qualified', accountRec: 'either' },
-  'VTI':   { name: 'Vanguard Total Stock Market',       yield: 1.4,  er: 0.03, downturnBeta: 1.00, avgCapture: 100, bullCapture: 100, incomeType: 'qualified', accountRec: 'either' },
-  'IVV':   { name: 'iShares Core S&P 500',              yield: 1.3,  er: 0.03, downturnBeta: 1.00, avgCapture: 100, bullCapture: 100, incomeType: 'qualified', accountRec: 'either' },
-  'CONY':  { name: 'YieldMax COIN Option Income',       yield: 60,   er: 0.99, downturnBeta: 1.30, avgCapture: 70,  bullCapture: 40,  incomeType: 'ordinary',  accountRec: 'roth'   },
-  'TSLY':  { name: 'YieldMax TSLA Option Income',       yield: 55,   er: 0.99, downturnBeta: 1.20, avgCapture: 65,  bullCapture: 35,  incomeType: 'ordinary',  accountRec: 'roth'   },
-  'MSFO':  { name: 'YieldMax MSFT Option Income',       yield: 18,   er: 0.99, downturnBeta: 0.95, avgCapture: 70,  bullCapture: 45,  incomeType: 'ordinary',  accountRec: 'roth'   },
-  'NVDY':  { name: 'YieldMax NVDA Option Income',       yield: 65,   er: 0.99, downturnBeta: 1.25, avgCapture: 65,  bullCapture: 35,  incomeType: 'ordinary',  accountRec: 'roth'   },
-  'AMZY':  { name: 'YieldMax AMZN Option Income',       yield: 22,   er: 0.99, downturnBeta: 1.00, avgCapture: 68,  bullCapture: 42,  incomeType: 'ordinary',  accountRec: 'roth'   },
-  'GOOGY': { name: 'YieldMax GOOGL Option Income',      yield: 18,   er: 0.99, downturnBeta: 0.95, avgCapture: 68,  bullCapture: 42,  incomeType: 'ordinary',  accountRec: 'roth'   },
-  'YMAG':  { name: 'YieldMax Magnificent 7 Fund',       yield: 35,   er: 0.99, downturnBeta: 1.10, avgCapture: 68,  bullCapture: 40,  incomeType: 'ordinary',  accountRec: 'roth'   },
-  'YMAX':  { name: 'YieldMax Universe Fund',            yield: 30,   er: 0.99, downturnBeta: 1.05, avgCapture: 68,  bullCapture: 40,  incomeType: 'ordinary',  accountRec: 'roth'   },
-  'KLIP':  { name: 'KraneShares China Internet & CC',   yield: 25,   er: 0.95, downturnBeta: 1.10, avgCapture: 70,  bullCapture: 45,  incomeType: 'ordinary',  accountRec: 'roth'   },
-  'FEPI':  { name: 'REX FANG & Innovation Equity IP',   yield: 25,   er: 0.65, downturnBeta: 1.05, avgCapture: 75,  bullCapture: 45,  incomeType: 'mixed',     accountRec: 'roth'   },
-  'GPIQ':  { name: 'Goldman Sachs Nasdaq-100 CC',       yield: 12,   er: 0.29, downturnBeta: 0.95, avgCapture: 85,  bullCapture: 65,  incomeType: 'ordinary',  accountRec: 'roth'   },
-  'GPIX':  { name: 'Goldman Sachs S&P 500 CC',          yield: 10,   er: 0.29, downturnBeta: 0.85, avgCapture: 85,  bullCapture: 65,  incomeType: 'ordinary',  accountRec: 'roth'   },
-  'AGG':   { name: 'iShares Core US Aggregate Bond',    yield: 3.8,  er: 0.03, downturnBeta: 0.10, avgCapture: 20,  bullCapture: 10,  incomeType: 'ordinary',  accountRec: 'ira'    },
-  'BND':   { name: 'Vanguard Total Bond Market',         yield: 3.7,  er: 0.03, downturnBeta: 0.10, avgCapture: 20,  bullCapture: 10,  incomeType: 'ordinary',  accountRec: 'ira'    },
-  'NUSI':  { name: 'Nationwide Nasdaq-100 Risk-Managed', yield: 7.5,  er: 0.68, downturnBeta: 0.60, avgCapture: 65,  bullCapture: 40,  incomeType: 'mixed',     accountRec: 'roth'   },
-  'PFFD':  { name: 'Global X US Preferred ETF',          yield: 6.5,  er: 0.23, downturnBeta: 0.60, avgCapture: 50,  bullCapture: 35,  incomeType: 'ordinary',  accountRec: 'roth'   },
-  'O':     { name: 'Realty Income Corp',                 yield: 5.6,  er: 0,    downturnBeta: 0.70, avgCapture: 60,  bullCapture: 45,  incomeType: 'ordinary',  accountRec: 'roth'   },
-  'MAIN':  { name: 'Main Street Capital',                yield: 6.8,  er: 0,    downturnBeta: 0.80, avgCapture: 75,  bullCapture: 60,  incomeType: 'ordinary',  accountRec: 'roth'   },
-};
-
-/* ── Yahoo Finance fetch via CORS proxy (same method as Market Bottom Dashboard) ── */
-async function yfetch(symbol) {
-  var base = 'https://query1.finance.yahoo.com/v8/finance/chart/'
-    + encodeURIComponent(symbol)
-    + '?interval=1d&range=300d&includePrePost=false';
-  var urls = [
-    base,
-    'https://api.allorigins.win/raw?url=' + encodeURIComponent(base),
-    'https://corsproxy.io/?' + encodeURIComponent(base)
-  ];
-  for (var i = 0; i < urls.length; i++) {
-    try {
-      var r = await fetch(urls[i]);
-      if (!r.ok) continue;
-      var j = await r.json();
-      if (j && j.chart && j.chart.result && j.chart.result[0]) return j;
-    } catch(e) { /* try next proxy */ }
-  }
-  return null;
-}
-
-/* ── Fetch summary data (name, trailing yield, ER) from Yahoo quoteSummary ── */
-async function yfetchSummary(symbol) {
-  var base = 'https://query1.finance.yahoo.com/v10/finance/quoteSummary/'
-    + encodeURIComponent(symbol)
-    + '?modules=summaryDetail,assetProfile,defaultKeyStatistics,fundProfile';
-  var urls = [
-    base,
-    'https://api.allorigins.win/raw?url=' + encodeURIComponent(base),
-    'https://corsproxy.io/?' + encodeURIComponent(base)
-  ];
-  for (var i = 0; i < urls.length; i++) {
-    try {
-      var r = await fetch(urls[i]);
-      if (!r.ok) continue;
-      var j = await r.json();
-      if (j && j.quoteSummary && j.quoteSummary.result) return j.quoteSummary.result[0];
-    } catch(e) { /* try next */ }
-  }
-  return null;
-}
-
-function fillTickerFields(i, data) {
-  var nameEl  = document.getElementById('name_'    + i);
-  var yieldEl = document.getElementById('yield_'   + i);
-  var erEl    = document.getElementById('er_'      + i);
-  var betaEl  = document.getElementById('beta_'    + i);
-  var avgEl   = document.getElementById('avgcap_'  + i);
-  var bullEl  = document.getElementById('bullcap_' + i);
-  var incEl   = document.getElementById('inctype_' + i);
-  var accEl   = document.getElementById('accrec_'  + i);
-  if (nameEl  && !nameEl.value  && data.name)          nameEl.value  = data.name;
-  if (yieldEl && data.yield  != null) { yieldEl.value = data.yield;  yieldEl.style.color = 'var(--accent)'; setTimeout(function(){ yieldEl.style.color = ''; }, 2000); }
-  if (erEl    && data.er     != null) { erEl.value    = data.er;     erEl.style.color    = 'var(--accent)'; setTimeout(function(){ erEl.style.color    = ''; }, 2000); }
-  if (betaEl  && data.downturnBeta != null) betaEl.value = data.downturnBeta;
-  if (avgEl   && data.avgCapture   != null) avgEl.value  = data.avgCapture;
-  if (bullEl  && data.bullCapture  != null) bullEl.value = data.bullCapture;
-  if (incEl   && data.incomeType)           incEl.value  = data.incomeType;
-  if (accEl   && data.accountRec)           accEl.value  = data.accountRec;
-}
-
-function setLookupStatus(i, msg, color) {
-  var nameEl = document.getElementById('name_' + i);
-  if (nameEl && !nameEl.value) {
-    nameEl.placeholder = msg;
-    nameEl.style.color = color || '';
-  }
-  var yieldEl = document.getElementById('yield_' + i);
-  var erEl    = document.getElementById('er_' + i);
-  if (msg === '...') {
-    if (yieldEl && !yieldEl.value) yieldEl.placeholder = '...';
-    if (erEl    && !erEl.value)    erEl.placeholder    = '...';
-  } else {
-    if (yieldEl) yieldEl.placeholder = 'Yield%';
-    if (erEl)    erEl.placeholder    = 'ER%';
-    if (nameEl)  nameEl.placeholder  = 'Description (optional)';
-    if (nameEl)  nameEl.style.color  = '';
-  }
-}
-
-async function autoFillTicker(i) {
-  var tickerEl = document.getElementById('ticker_' + i);
-  if (!tickerEl) return;
-  var t = tickerEl.value.trim().toUpperCase();
-  tickerEl.value = t;
-  if (!t) return;
-
-  // 1. Check local DB first — instant, no network needed
-  if (TICKER_DB[t]) {
-    fillTickerFields(i, TICKER_DB[t]);
-    return;
-  }
-
-  // 2. Unknown ticker — fetch live from Yahoo Finance
-  setLookupStatus(i, 'Looking up ' + t + '...');
-
-  try {
-    // Fetch both chart data (for trailing yield calc) and summary (for name, ER)
-    var [chartJ, summaryJ] = await Promise.all([yfetch(t), yfetchSummary(t)]);
-
-    if (!chartJ && !summaryJ) {
-      setLookupStatus(i, t + ' not found — enter manually');
-      return;
-    }
-
-    var liveData = {};
-
-    // Extract name from summary
-    if (summaryJ) {
-      var fp = summaryJ.fundProfile || {};
-      var sp = summaryJ.summaryDetail || {};
-      var ks = summaryJ.defaultKeyStatistics || {};
-      liveData.name = fp.longName || fp.shortName || ks.longName || '';
-      // Expense ratio from fund profile (annualReportExpenseRatio or totalExpenseRatio)
-      var erRaw = (fp.annualReportExpenseRatio && fp.annualReportExpenseRatio.raw) ||
-                  (fp.totalExpenseRatio && fp.totalExpenseRatio.raw) || null;
-      if (erRaw != null) liveData.er = parseFloat((erRaw * 100).toFixed(2));
-      // Trailing yield from summaryDetail
-      var yRaw = (sp.trailingAnnualDividendYield && sp.trailingAnnualDividendYield.raw) ||
-                 (sp.dividendYield && sp.dividendYield.raw) || null;
-      if (yRaw != null) liveData.yield = parseFloat((yRaw * 100).toFixed(2));
-    }
-
-    // If yield not in summary, compute from chart (trailing 12mo divs / current price)
-    if (liveData.yield == null && chartJ) {
-      var res    = chartJ.chart.result[0];
-      var meta   = res.meta || {};
-      var events = res.events || {};
-      var divs   = events.dividends ? Object.values(events.dividends) : [];
-      var price  = meta.regularMarketPrice || 0;
-      if (divs.length && price > 0) {
-        var now   = Date.now() / 1000;
-        var yr    = now - 365 * 86400;
-        var ttmDiv = divs.filter(function(d){ return d.date > yr; })
-                        .reduce(function(s,d){ return s + d.amount; }, 0);
-        if (ttmDiv > 0) liveData.yield = parseFloat((ttmDiv / price * 100).toFixed(2));
-      }
-    }
-
-    // Use TICKER_DB defaults for behavioral fields if we have a partial match
-    var dbFallback = { downturnBeta: 1.0, avgCapture: 85, bullCapture: 65, incomeType: 'ordinary', accountRec: 'roth' };
-    var merged = Object.assign({}, dbFallback, liveData);
-
-    if (merged.yield != null || merged.name) {
-      fillTickerFields(i, merged);
-      setLookupStatus(i, '');
-    } else {
-      setLookupStatus(i, 'No data found — enter manually');
-    }
-  } catch(e) {
-    console.warn('Live lookup failed for', t, e);
-    setLookupStatus(i, 'Lookup failed — enter manually');
-  }
-}
-
-
-const COLOR_NAMES = ['--c0','--c1','--c2','--c3'];
-const NUM_INSTRUMENTS = 5;
-
-let instruments = []; // filled at runtime
-let currentScenario = 'down';
-let currentView = 'both';
-let currentRecovery = 'grind';
-let START = 10000;
-let chart;
-
-// Build setup cards
-function buildSetupCards() {
-  const container = document.getElementById('instrumentCards');
-  const empty = { ticker: '', name: '', yield: 0, er: 0, downturnBeta: 1.00, avgCapture: 1.00, bullCapture: 1.00, incomeType: 'ordinary', accountRec: 'roth' };
-
-  // Load saved state - validate it has sane values
-  const saved = (() => {
-    try {
-      const raw = JSON.parse(sessionStorage.getItem('projector_rows') || 'null');
-      if (!Array.isArray(raw)) return null;
-      // Validate: avgCapture should be <= 2 (fractional) not 100 (old corrupt data)
-      const isCorrupt = raw.some(r => r && (r.avgCapture > 2 || r.bullCapture > 2));
-      if (isCorrupt) { sessionStorage.removeItem('projector_rows'); return null; }
-      return raw;
-    } catch(e) { return null; }
-  })();
-  const defaults = Array.from({length: 5}, (_, i) => saved && saved[i] ? saved[i] : {...empty});
-
-  const rowColors = ['#c8a96e','#5cb8a0','#8b7fd4','#e05c8a','#4ab8d4'];
-
-  // Rebuild everything including the header
-  container.innerHTML = `<div class="instrument-row-header">
-    <span>#</span><span>Ticker</span><span>Description</span><span style="color:var(--accent)">Yield %</span><span style="color:var(--accent)">ER %</span><span>More</span>
-  </div>` + defaults.map((d, i) => `
-    <div class="instrument-row" id="irow_${i}">
-      <div class="row-num">
-        <span class="color-dot" style="background:${rowColors[i]}"></span>
-        ${i+1}
-      </div>
-      <div class="row-ticker">
-        <input type="text" id="ticker_${i}" value="${d.ticker}" placeholder="TICKER" maxlength="10" style="text-transform:uppercase" tabindex="${i+1}" oninput="this.value=this.value.toUpperCase()" onblur="autoFillTicker(${i})">
-      </div>
-      <div class="row-desc">
-        <input type="text" id="name_${i}" value="${d.name}" placeholder="Description (optional)" tabindex="-1">
-      </div>
-      <div class="row-yield">
-        <input type="number" id="yield_${i}" value="${d.yield}" min="0" max="100" step="0.1" placeholder="Yield%" tabindex="-1">
-      </div>
-      <div class="row-er">
-        <input type="number" id="er_${i}" value="${d.er}" min="0" max="5" step="0.01" placeholder="ER%" tabindex="-1">
-      </div>
-      <div class="row-action">
-        <button type="button" class="vars-toggle row-vars-btn" id="vtoggle_${i}" onclick="toggleVars(${i})">+ More</button>
-      </div>
-      <div class="vars-drawer row-drawer" id="vdrawer_${i}">
-        <div class="drawer-inner">
-          <div class="field-row">
-            <div class="field">
-              <label>Downturn Beta</label>
-              <input type="number" id="beta_${i}" value="${d.downturnBeta}" min="0" max="2" step="0.05">
-              <div class="hint">1.0 = full market drop</div>
-            </div>
-            <div class="field">
-              <label>Avg Mkt Capture (%)</label>
-              <input type="number" id="avgcap_${i}" value="${d.avgCapture * 100}" min="0" max="150" step="1">
-            </div>
-            <div class="field">
-              <label>Bull Capture (%)</label>
-              <input type="number" id="bullcap_${i}" value="${d.bullCapture * 100}" min="0" max="150" step="1">
-            </div>
-            <div class="field">
-              <label>Income Type</label>
-              <select id="inctype_${i}">
-                <option value="ordinary"  ${d.incomeType==='ordinary'  ? 'selected' : ''}>Ordinary Income</option>
-                <option value="qualified" ${d.incomeType==='qualified' ? 'selected' : ''}>Qualified Divs</option>
-                <option value="mixed"     ${d.incomeType==='mixed'     ? 'selected' : ''}>Mixed (60/40)</option>
-                <option value="return"    ${d.incomeType==='return'    ? 'selected' : ''}>Return of Capital</option>
-              </select>
-            </div>
-            <div class="field">
-              <label>Best Account</label>
-              <select id="accrec_${i}">
-                <option value="roth"      ${d.accountRec==='roth'      ? 'selected' : ''}>Roth IRA</option>
-                <option value="ira"       ${d.accountRec==='ira'       ? 'selected' : ''}>Traditional IRA</option>
-                <option value="brokerage" ${d.accountRec==='brokerage' ? 'selected' : ''}>Brokerage OK</option>
-                <option value="either"    ${d.accountRec==='either'    ? 'selected' : ''}>Either</option>
-              </select>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  `).join('');
-}
-
-function updateRowLabel(i) {
-  // nothing needed — ticker updates live via input binding
-}
-
-// ── AUTOCOMPLETE ──────────────────────────────────────────
-function getTickerList() {
-  // Merge built-in TICKER_DB with any session edits
-  try {
-    const edits = JSON.parse(sessionStorage.getItem('etf_edits') || 'null');
-    if (edits) return Object.assign({}, TICKER_DB, edits);
-  } catch(e) {}
-  return TICKER_DB;
-}
-
 function onTickerInput(i) {
-  const input = document.getElementById('ticker_' + i);
-  const list  = document.getElementById('ac_' + i);
+  var input = document.getElementById('ticker_' + i);
+  var list  = document.getElementById('ac_' + i);
   if (!input || !list) return;
-  const q = input.value.trim().toUpperCase();
+  var q = input.value.trim().toUpperCase();
   if (!q) { list.classList.remove('open'); return; }
-
-  const db = getTickerList();
-  const matches = Object.keys(db)
-    .filter(function(t) {
-      return t.startsWith(q) || db[t].name.toUpperCase().includes(q);
-    })
-    .slice(0, 8);
-
+  var db = getTickerList();
+  var matches = Object.keys(db).filter(function(t) {
+    return t.startsWith(q) || db[t].name.toUpperCase().includes(q);
+  }).slice(0, 8);
   if (!matches.length) { list.classList.remove('open'); return; }
-
   list.innerHTML = '';
   matches.forEach(function(t, idx) {
-    const d = db[t];
-    const item = document.createElement('div');
+    var d = db[t];
+    var item = document.createElement('div');
     item.className = 'ac-item';
     item.dataset.ticker = t;
     item.dataset.idx = String(idx);
-    item.innerHTML =
-      '<span class="ac-ticker">' + t + '</span>' +
-      '<span class="ac-name">' + (d.name || '') + '</span>' +
-      '<span class="ac-yield">' + (d.yield || 0) + '% · ' + (d.er || 0) + '% ER</span>';
+    item.innerHTML = '<span class="ac-ticker">' + t + '</span><span class="ac-name">' + (d.name||'') + '</span><span class="ac-yield">' + (d.yield||0) + '% · ' + (d.er||0) + '% ER</span>';
     item.addEventListener('mousedown', function(e) { selectAcItem(e, i, t); });
     list.appendChild(item);
   });
@@ -2545,273 +1114,252 @@ function onTickerInput(i) {
 
 function selectAcItem(e, i, ticker) {
   e.preventDefault();
-  const input = document.getElementById('ticker_' + i);
-  if (input) { input.value = ticker; }
-  const list = document.getElementById('ac_' + i);
+  var input = document.getElementById('ticker_' + i);
+  if (input) input.value = ticker;
+  var list = document.getElementById('ac_' + i);
   if (list) list.classList.remove('open');
   autoFillTicker(i);
 }
 
 function onTickerBlur(i) {
-  // Small delay so mousedown on ac-item fires first
   setTimeout(function() {
-    const list = document.getElementById('ac_' + i);
+    var list = document.getElementById('ac_' + i);
     if (list) list.classList.remove('open');
     autoFillTicker(i);
   }, 150);
 }
 
 function onTickerKey(e, i) {
-  const list = document.getElementById('ac_' + i);
-  if (!list || !list.classList.contains('open')) {
-    // Fall through to tab/enter navigation
-    const isTab   = e.key === 'Tab'   && !e.shiftKey;
-    const isEnter = e.key === 'Enter';
-    if (!isTab && !isEnter) return;
-    const next = document.getElementById('ticker_' + (i + 1));
-    if (next) { e.preventDefault(); next.focus(); next.select(); }
-    else if (isEnter) { e.preventDefault(); const rb = document.querySelector('.run-btn'); if (rb) rb.focus(); }
-    return;
-  }
-
-  const items = list.querySelectorAll('.ac-item');
-  const selected = list.querySelector('.ac-item.selected');
-  let idx = selected ? parseInt(selected.dataset.idx) : -1;
-
-  if (e.key === 'ArrowDown') {
-    e.preventDefault();
-    idx = Math.min(idx + 1, items.length - 1);
-    items.forEach(function(it, j) { it.classList.toggle('selected', j === idx); });
-  } else if (e.key === 'ArrowUp') {
-    e.preventDefault();
-    idx = Math.max(idx - 1, 0);
-    items.forEach(function(it, j) { it.classList.toggle('selected', j === idx); });
-  } else if (e.key === 'Enter' || e.key === 'Tab') {
-    e.preventDefault();
-    if (selected) {
-      selectAcItem(e, i, selected.dataset.ticker);
-    } else {
-      list.classList.remove('open');
-      autoFillTicker(i);
+  var list = document.getElementById('ac_' + i);
+  var isOpen = list && list.classList.contains('open');
+  if (isOpen) {
+    var items = list.querySelectorAll('.ac-item');
+    var selected = list.querySelector('.ac-item.selected');
+    var idx = selected ? parseInt(selected.dataset.idx) : -1;
+    if (e.key === 'ArrowDown') { e.preventDefault(); idx = Math.min(idx+1, items.length-1); items.forEach(function(it,j){ it.classList.toggle('selected', j===idx); }); return; }
+    if (e.key === 'ArrowUp')   { e.preventDefault(); idx = Math.max(idx-1, 0);              items.forEach(function(it,j){ it.classList.toggle('selected', j===idx); }); return; }
+    if (e.key === 'Enter' || e.key === 'Tab') {
+      e.preventDefault();
+      if (selected) selectAcItem(e, i, selected.dataset.ticker);
+      else { list.classList.remove('open'); autoFillTicker(i); }
+      var next = document.getElementById('ticker_' + (i+1));
+      if (next) setTimeout(function(){ next.focus(); next.select(); }, 160);
+      return;
     }
-    if (e.key === 'Tab' || e.key === 'Enter') {
-      const next = document.getElementById('ticker_' + (i + 1));
-      if (next) { setTimeout(function(){ next.focus(); next.select(); }, 160); }
-    }
-  } else if (e.key === 'Escape') {
-    list.classList.remove('open');
+    if (e.key === 'Escape') { list.classList.remove('open'); return; }
   }
+  var isTab = e.key === 'Tab' && !e.shiftKey;
+  var isEnter = e.key === 'Enter';
+  if (!isTab && !isEnter) return;
+  var next = document.getElementById('ticker_' + (i+1));
+  if (next) { e.preventDefault(); next.focus(); next.select(); }
+  else if (isEnter) { e.preventDefault(); var rb = document.querySelector('.run-btn'); if (rb) rb.focus(); }
 }
 
-// ── ETF MANAGER ───────────────────────────────────────────
-function openEtfManager() {
-  renderEtfTable();
-  document.getElementById('etfModal').classList.add('open');
-}
-
-function closeEtfManager() {
-  document.getElementById('etfModal').classList.remove('open');
-}
-
-
+// ════════════════════════════════════════════
+// ETF MANAGER
+// ════════════════════════════════════════════
 var _etfEdits = {};
 
+function openEtfManager()  { renderEtfTable(); document.getElementById('etfModal').classList.add('open'); }
+function closeEtfManager() { document.getElementById('etfModal').classList.remove('open'); }
+
+function makeSelect(field, options, current, ticker) {
+  var sel = document.createElement('select');
+  sel.dataset.field = field;
+  options.forEach(function(v) { var opt = document.createElement('option'); opt.value = v; opt.textContent = v; if (v === current) opt.selected = true; sel.appendChild(opt); });
+  sel.addEventListener('change', function() { markEtfEdit(ticker, sel); });
+  return sel;
+}
+
+function makeInput(type, value, step, field, ticker) {
+  var inp = document.createElement('input');
+  inp.type = type; inp.value = value; if (step) inp.step = step;
+  inp.dataset.field = field;
+  inp.addEventListener('change', function() { markEtfEdit(ticker, inp); });
+  return inp;
+}
+
+function renderEtfTable() {
+  var db = getTickerList();
+  var tbody = document.getElementById('etfTableBody');
+  tbody.innerHTML = '';
+  Object.keys(db).sort().forEach(function(t) {
+    var d = db[t];
+    var tr = document.createElement('tr');
+    function td(c) { var cell = document.createElement('td'); if (typeof c === 'string') cell.innerHTML = c; else cell.appendChild(c); return cell; }
+    tr.appendChild(td('<span class="ticker-cell">' + t + '</span>'));
+    tr.appendChild(td(makeInput('text',   d.name||'',        '',     'name',        t)));
+    tr.appendChild(td(makeInput('number', d.yield||0,        '0.1',  'yield',       t)));
+    tr.appendChild(td(makeInput('number', d.er||0,           '0.01', 'er',          t)));
+    tr.appendChild(td(makeInput('number', d.downturnBeta||1, '0.05', 'downturnBeta',t)));
+    tr.appendChild(td(makeInput('number', d.avgCapture||85,  '1',    'avgCapture',  t)));
+    tr.appendChild(td(makeInput('number', d.bullCapture||70, '1',    'bullCapture', t)));
+    tr.appendChild(td(makeSelect('incomeType', ['ordinary','qualified','mixed','return'], d.incomeType, t)));
+    tr.appendChild(td(makeSelect('accountRec', ['roth','ira','brokerage','either'],      d.accountRec, t)));
+    var del = document.createElement('button'); del.className = 'etf-del-btn'; del.textContent = '✕';
+    del.addEventListener('click', function() { deleteEtf(t); }); tr.appendChild(td(del));
+    tbody.appendChild(tr);
+  });
+}
+
 function markEtfEdit(ticker, input) {
-  if (!_etfEdits[ticker]) {
-    const db = getTickerList();
-    _etfEdits[ticker] = Object.assign({}, db[ticker]);
-  }
-  const field = input.dataset.field;
-  const val = (input.type === 'number') ? parseFloat(input.value) : input.value;
-  _etfEdits[ticker][field] = val;
+  if (!_etfEdits[ticker]) { var db = getTickerList(); _etfEdits[ticker] = Object.assign({}, db[ticker]||{}); }
+  var val = (input.type === 'number') ? parseFloat(input.value) : input.value;
+  _etfEdits[ticker][input.dataset.field] = val;
 }
 
 function deleteEtf(ticker) {
-  if (!confirm('Remove ' + ticker + ' from the list?')) return;
-  _etfEdits[ticker] = null; // null = deleted
-  renderEtfTable();
+  if (!confirm('Remove ' + ticker + '?')) return;
+  _etfEdits[ticker] = null; renderEtfTable();
 }
 
 function addEtfRow() {
-  const t = (document.getElementById('newTicker').value || '').trim().toUpperCase();
-  if (!t) { alert('Enter a ticker symbol'); return; }
-  const db = getTickerList();
-  _etfEdits[t] = {
-    name:        document.getElementById('newName').value  || t,
-    yield:       parseFloat(document.getElementById('newYield').value) || 0,
-    er:          parseFloat(document.getElementById('newEr').value)    || 0,
-    downturnBeta: 1.0, avgCapture: 85, bullCapture: 70,
-    incomeType: 'ordinary', accountRec: 'roth',
-  };
-  document.getElementById('newTicker').value = '';
-  document.getElementById('newName').value   = '';
-  document.getElementById('newYield').value  = '';
-  document.getElementById('newEr').value     = '';
+  var t = (document.getElementById('newTicker').value||'').trim().toUpperCase();
+  if (!t) { alert('Enter a ticker'); return; }
+  _etfEdits[t] = { name: document.getElementById('newName').value||t, yield: parseFloat(document.getElementById('newYield').value)||0, er: parseFloat(document.getElementById('newEr').value)||0, downturnBeta:1.0, avgCapture:85, bullCapture:70, incomeType:'ordinary', accountRec:'roth' };
+  document.getElementById('newTicker').value = document.getElementById('newName').value = document.getElementById('newYield').value = document.getElementById('newEr').value = '';
   renderEtfTable();
 }
 
 function saveEtfList() {
-  // Apply edits on top of TICKER_DB
-  const merged = Object.assign({}, TICKER_DB);
-  Object.keys(_etfEdits).forEach(function(t) {
-    if (_etfEdits[t] === null) delete merged[t];
-    else merged[t] = _etfEdits[t];
-  });
   try { sessionStorage.setItem('etf_edits', JSON.stringify(_etfEdits)); } catch(e) {}
-  _etfEdits = {};
-  closeEtfManager();
+  _etfEdits = {}; closeEtfManager();
 }
 
-// Close modal on overlay click
-document.addEventListener('click', function(e) {
-  const modal = document.getElementById('etfModal');
-  if (modal && e.target === modal) closeEtfManager();
-});
+document.addEventListener('click', function(e) { var m = document.getElementById('etfModal'); if (m && e.target === m) closeEtfManager(); });
 
+// ════════════════════════════════════════════
+// SETUP CARDS
+// ════════════════════════════════════════════
+function buildSetupCards() {
+  var container = document.getElementById('instrumentCards');
+  var empty = { ticker:'', name:'', yield:0, er:0, downturnBeta:1.00, avgCapture:1.00, bullCapture:1.00, incomeType:'ordinary', accountRec:'roth' };
+  var saved = (function(){ try { var raw = JSON.parse(sessionStorage.getItem('projector_rows')||'null'); if (!Array.isArray(raw)) return null; var isCorrupt = raw.some(function(r){ return r && (r.avgCapture > 2 || r.bullCapture > 2); }); if (isCorrupt) { sessionStorage.removeItem('projector_rows'); return null; } return raw; } catch(e){ return null; } })();
+  var defaults = Array.from({length: 5}, function(_,i){ return saved && saved[i] ? saved[i] : Object.assign({},empty); });
+  var rowColors = ['#c8a96e','#5cb8a0','#8b7fd4','#e05c8a','#4ab8d4'];
+  container.innerHTML = '<div class="instrument-row-header"><span>#</span><span>Ticker</span><span>Description</span><span style="color:var(--accent)">Yield %</span><span style="color:var(--accent)">ER %</span><span>More</span></div>' + defaults.map(function(d,i){
+    return '<div class="instrument-row" id="irow_'+i+'">' +
+      '<div class="row-num"><span class="color-dot" style="background:'+rowColors[i]+'"></span>'+( i+1)+'</div>' +
+      '<div class="row-ticker autocomplete-wrap"><input type="text" id="ticker_'+i+'" value="'+d.ticker+'" placeholder="TICKER" maxlength="10" style="text-transform:uppercase;width:100%" tabindex="'+(i+1)+'" oninput="onTickerInput('+i+')" onblur="onTickerBlur('+i+')" onkeydown="onTickerKey(event,'+i+')" autocomplete="off"><div class="autocomplete-list" id="ac_'+i+'"></div></div>' +
+      '<div class="row-desc"><input type="text" id="name_'+i+'" value="'+d.name+'" placeholder="Description (optional)" tabindex="-1"></div>' +
+      '<div class="row-yield"><input type="number" id="yield_'+i+'" value="'+d.yield+'" min="0" max="100" step="0.1" placeholder="Yield%" tabindex="-1"></div>' +
+      '<div class="row-er"><input type="number" id="er_'+i+'" value="'+d.er+'" min="0" max="5" step="0.01" placeholder="ER%" tabindex="-1"></div>' +
+      '<div class="row-action"><button type="button" class="vars-toggle row-vars-btn" id="vtoggle_'+i+'" onclick="toggleVars('+i+')">+ More</button></div>' +
+      '<div class="vars-drawer row-drawer" id="vdrawer_'+i+'"><div class="drawer-inner"><div class="field-row">' +
+        '<div class="field"><label>Downturn Beta</label><input type="number" id="beta_'+i+'" value="'+d.downturnBeta+'" min="0" max="2" step="0.05"><div class="hint">1.0 = full market drop</div></div>' +
+        '<div class="field"><label>Avg Mkt Capture (%)</label><input type="number" id="avgcap_'+i+'" value="'+(d.avgCapture*100)+'" min="0" max="150" step="1"></div>' +
+        '<div class="field"><label>Bull Capture (%)</label><input type="number" id="bullcap_'+i+'" value="'+(d.bullCapture*100)+'" min="0" max="150" step="1"></div>' +
+        '<div class="field"><label>Income Type</label><select id="inctype_'+i+'"><option value="ordinary"'+(d.incomeType==='ordinary'?' selected':'')+'>Ordinary Income</option><option value="qualified"'+(d.incomeType==='qualified'?' selected':'')+'>Qualified Divs</option><option value="mixed"'+(d.incomeType==='mixed'?' selected':'')+'>Mixed (60/40)</option><option value="return"'+(d.incomeType==='return'?' selected':'')+'>Return of Capital</option></select></div>' +
+        '<div class="field"><label>Best Account</label><select id="accrec_'+i+'"><option value="roth"'+(d.accountRec==='roth'?' selected':'')+'>Roth IRA</option><option value="ira"'+(d.accountRec==='ira'?' selected':'')+'>Traditional IRA</option><option value="brokerage"'+(d.accountRec==='brokerage'?' selected':'')+'>Brokerage OK</option><option value="either"'+(d.accountRec==='either'?' selected':'')+'>Either</option></select></div>' +
+      '</div></div></div>' +
+    '</div>';
+  }).join('');
+}
+
+function updateRowLabel(i) {}
+
+function toggleVars(i) {
+  var drawer = document.getElementById('vdrawer_' + i);
+  var btn    = document.getElementById('vtoggle_' + i);
+  var isOpen = drawer.classList.contains('open');
+  drawer.classList.toggle('open', !isOpen);
+  btn.textContent = isOpen ? '+ More' : '− Less';
+  btn.classList.toggle('open', !isOpen);
+}
 
 function toggleGlobalVars() {
-  const drawer = document.getElementById('globalDrawer');
+  var drawer = document.getElementById('globalDrawer');
   if (!drawer) return;
-  const isOpen = drawer.classList.contains('open');
+  var isOpen = drawer.classList.contains('open');
   drawer.classList.toggle('open', !isOpen);
-  // Update the top bar button text
   document.querySelectorAll('.top-bar-btn').forEach(function(btn) {
     if (btn.textContent.indexOf('Global') !== -1) {
       btn.textContent = isOpen ? '⚙ Global Settings' : '⚙ Global Settings ✓';
-      btn.style.borderColor = isOpen ? '' : 'var(--accent)';
       btn.style.color = isOpen ? '' : 'var(--accent)';
     }
   });
 }
 
-function toggleVars(i) {
-  const drawer = document.getElementById('vdrawer_' + i);
-  const btn = document.getElementById('vtoggle_' + i);
-  const isOpen = drawer.classList.contains('open');
-  drawer.classList.toggle('open', !isOpen);
-  btn.textContent = isOpen ? '+ Variables' : '− Variables';
-  btn.classList.toggle('open', !isOpen);
-}
-
-
 // ════════════════════════════════════════════
-// PROJECTION ENGINE
+// MATH
 // ════════════════════════════════════════════
-
 function applyFees(grossMultiplier, er, years) {
   return grossMultiplier * Math.pow(1 - er / 100, years);
 }
 
 function computeScenarioMultipliers(inst, downturnPct, avgReturn, bullReturn) {
-  const yld = inst.yield / 100;
-  const er = inst.er / 100;
-  const beta = inst.downturnBeta;
-  const avgCap = inst.avgCapture / 100;
-  const bullCap = inst.bullCapture / 100;
-  const drop = (downturnPct / 100) * beta;
-
-  // Premium income buffer: during high-vol crash, options premiums spike ~1.5-2x
-  const incomeBuffer = yld * 0.4; // roughly 40% of annual yield acts as buffer in yr1
-
-  // ── DOWNTURN ──
-  // yr1drop net of income buffer
-  const yr1drop = Math.max(0, drop - incomeBuffer);
-  // Gross 5yr reinvest: recovery back to ~prior level + yield compounding
-  // Base: market recovers to 0% price gain over 5 yrs, income is the return
-  const downturnReinvest = (1 - drop + incomeBuffer) * Math.pow(1 + yld * 0.85, 4); // 4 remaining years
-  const downturnSpend = Math.max(0.5, 1 - drop + incomeBuffer * 0.5); // price only
-
-  // ── AVG MARKET ──
-  const avgMktReturn = avgReturn / 100;
-  const avgPriceGain = avgMktReturn * avgCap;
-  const avgReinvest = Math.pow(1 + avgPriceGain + yld * 0.9, 5);
-  const avgSpend = Math.pow(1 + avgPriceGain, 5);
-
-  // ── BULL ──
-  const bullMktReturn = bullReturn / 100;
-  const bullPriceGain = bullMktReturn * bullCap;
-  const bullReinvest = Math.pow(1 + bullPriceGain + yld * 0.8, 5);
-  const bullSpend = Math.pow(1 + bullPriceGain, 5);
-
+  var yld = inst.yield / 100;
+  var beta = inst.downturnBeta;
+  var avgCap = inst.avgCapture / 100;
+  var bullCap = inst.bullCapture / 100;
+  var drop = (downturnPct / 100) * beta;
+  var incomeBuffer = yld * 0.4;
+  var yr1drop = Math.max(0, drop - incomeBuffer);
+  var downturnReinvest = (1 - drop + incomeBuffer) * Math.pow(1 + yld * 0.85, 4);
+  var downturnSpend = Math.max(0.5, 1 - drop + incomeBuffer * 0.5);
+  var avgPriceGain  = (avgReturn  / 100) * avgCap;
+  var bullPriceGain = (bullReturn / 100) * bullCap;
+  var avgReinvest   = Math.pow(1 + avgPriceGain  + yld * 0.9, 5);
+  var avgSpend      = Math.pow(1 + avgPriceGain, 5);
+  var bullReinvest  = Math.pow(1 + bullPriceGain + yld * 0.8, 5);
+  var bullSpend     = Math.pow(1 + bullPriceGain, 5);
   return {
-    down:  { reinvest: downturnReinvest, spend: downturnSpend, yr1drop },
-    avg:   { reinvest: avgReinvest,  spend: avgSpend,  yr1drop: 0 },
-    bull:  { reinvest: bullReinvest, spend: bullSpend, yr1drop: 0 },
+    down: { reinvest: downturnReinvest, spend: downturnSpend, yr1drop: yr1drop },
+    avg:  { reinvest: avgReinvest,  spend: avgSpend,  yr1drop: 0 },
+    bull: { reinvest: bullReinvest, spend: bullSpend, yr1drop: 0 },
   };
 }
 
 function getRecoveryMultiplier(base, yr1drop, recovery) {
   if (recovery === 'vshape') return 1 + (base - 1) * 1.15;
   if (recovery === 'grind')  return base;
-  return 1 + (base - 1) * 0.65; // slog
+  return 1 + (base - 1) * 0.65;
 }
 
 function buildPath(multiplier, er, yr1drop, recovery) {
-  // Guard against NaN/bad values
   if (!isFinite(multiplier) || multiplier <= 0) multiplier = 1;
   if (!isFinite(er) || er < 0) er = 0;
   if (!isFinite(yr1drop)) yr1drop = 0;
-  // multiplier is gross 5yr total return multiple (price + reinvested dividends)
-  // We compute true year-by-year compounding, then apply fees cumulatively.
-  // yr1drop only used in downturn scenario; avg/bull start growing immediately.
-
-  const erAnnual = er / 100;
-  const netMult = applyFees(multiplier, er, 5);
-  const finalVal = START * netMult;
-
+  var erAnnual = er / 100;
+  var netMult = applyFees(multiplier, er, 5);
+  var finalVal = START * netMult;
   if (yr1drop > 0) {
-    // DOWNTURN: drop in yr1, then recover to finalVal over remaining years
-    const afterDrop = START * (1 - yr1drop) * (1 - erAnnual);
-    const vals = [START, Math.round(afterDrop)];
-    for (let y = 2; y <= 5; y++) {
-      let t;
-      if (recovery === 'vshape') t = Math.min(1, (y - 1) / 1.5);
-      else if (recovery === 'grind') t = (y - 1) / 4;
-      else t = (y - 1) / 7;
-      const smooth = t * t * (3 - 2 * t);
+    var afterDrop = START * (1 - yr1drop) * (1 - erAnnual);
+    var vals = [START, Math.round(afterDrop)];
+    for (var y = 2; y <= 5; y++) {
+      var t = recovery === 'vshape' ? Math.min(1,(y-1)/1.5) : recovery === 'grind' ? (y-1)/4 : (y-1)/7;
+      var smooth = t*t*(3-2*t);
       vals.push(Math.round(afterDrop + (finalVal - afterDrop) * smooth));
     }
     return vals;
   } else {
-    // AVG / BULL: true annual compounding from year 0 → 5
-    // Derive implied annual net return from the 5yr net multiplier
-    const annualNetReturn = Math.pow(netMult, 1 / 5) - 1;
-    const vals = [START];
-    for (let y = 1; y <= 5; y++) {
-      vals.push(Math.round(START * Math.pow(1 + annualNetReturn, y)));
-    }
-    return vals;
+    var annualNetReturn = Math.pow(netMult, 1/5) - 1;
+    var vals2 = [START];
+    for (var y2 = 1; y2 <= 5; y2++) vals2.push(Math.round(START * Math.pow(1 + annualNetReturn, y2)));
+    return vals2;
   }
 }
 
 // ════════════════════════════════════════════
-// RENDER
+// CHART
 // ════════════════════════════════════════════
-
 function buildChart() {
-  const allSame = instruments.length > 1 && instruments.every(function(inst) {
-    return inst.yield === instruments[0].yield && inst.er === instruments[0].er;
-  });
-  const warnEl = document.getElementById('sameParamsWarn');
+  var allSame = instruments.length > 1 && instruments.every(function(inst) { return inst.yield === instruments[0].yield && inst.er === instruments[0].er; });
+  var warnEl = document.getElementById('sameParamsWarn');
   if (warnEl) warnEl.style.display = allSame ? 'block' : 'none';
 
-  const labels = ['Now','Yr 1','Yr 2','Yr 3','Yr 4','Yr 5'];
-  const recovery = currentScenario === 'down' ? currentRecovery : 'grind';
+  var labels = ['Now','Yr 1','Yr 2','Yr 3','Yr 4','Yr 5'];
+  var recovery = currentScenario === 'down' ? currentRecovery : 'grind';
 
-  const datasets = instruments.map(function(inst, i) {
-    const mults = inst.mults[currentScenario];
-    const adjTotal = currentScenario === 'down' ? getRecoveryMultiplier(mults.reinvest, mults.yr1drop, recovery) : mults.reinvest;
-    const adjPrice = currentScenario === 'down' ? getRecoveryMultiplier(mults.spend,    mults.yr1drop, recovery) : mults.spend;
-    const totalVals = buildPath(adjTotal, inst.er, mults.yr1drop, recovery);
-    const priceVals = buildPath(adjPrice, inst.er, mults.yr1drop, recovery);
-    const col = COLORS[i];
-
-    // hasIncome[i] = true if total meaningfully exceeds price at that point
-    // Use absolute dollar gap: if total > price by more than $10, income is present
-    const hasIncome = totalVals.map(function(v, idx) {
-      return (v - priceVals[idx]) > 10;
-    });
-
+  var datasets = instruments.map(function(inst, i) {
+    var mults = inst.mults[currentScenario];
+    var adjTotal = currentScenario === 'down' ? getRecoveryMultiplier(mults.reinvest, mults.yr1drop, recovery) : mults.reinvest;
+    var adjPrice = currentScenario === 'down' ? getRecoveryMultiplier(mults.spend,    mults.yr1drop, recovery) : mults.spend;
+    var totalVals = buildPath(adjTotal, inst.er, mults.yr1drop, recovery);
+    var priceVals = buildPath(adjPrice, inst.er, mults.yr1drop, recovery);
+    var col = COLORS[i];
+    var hasIncome = totalVals.map(function(v, idx) { return (v - priceVals[idx]) > 10; });
     return {
       label: inst.ticker,
       data: totalVals,
@@ -2823,32 +1371,17 @@ function buildChart() {
       fill: false,
       pointRadius: 5,
       pointHoverRadius: 7,
-      pointBackgroundColor: totalVals.map(function(v, idx) {
-        return hasIncome[idx] ? col : 'transparent';
-      }),
+      pointBackgroundColor: totalVals.map(function(v,idx){ return hasIncome[idx] ? col : 'transparent'; }),
       pointBorderColor: col,
       pointBorderWidth: 2,
       segment: {
-        borderColor: function(ctx) {
-          const h0 = hasIncome[ctx.p0DataIndex];
-          const h1 = hasIncome[ctx.p1DataIndex];
-          return (h0 || h1) ? col : col + '55';
-        },
+        borderColor: function(ctx) { return (hasIncome[ctx.p0DataIndex]||hasIncome[ctx.p1DataIndex]) ? col : col+'55'; },
         borderWidth: function(ctx) {
-          const h0 = hasIncome[ctx.p0DataIndex];
-          const h1 = hasIncome[ctx.p1DataIndex];
-          // Thicker where income is larger relative to yield
-          if (!h0 && !h1) return 1.5;
-          const gap0 = totalVals[ctx.p0DataIndex] - priceVals[ctx.p0DataIndex];
-          const gap1 = totalVals[ctx.p1DataIndex] - priceVals[ctx.p1DataIndex];
-          const avgGap = (gap0 + gap1) / 2;
-          return 2 + Math.min(4, avgGap / 300);
+          var g0 = totalVals[ctx.p0DataIndex] - priceVals[ctx.p0DataIndex];
+          var g1 = totalVals[ctx.p1DataIndex] - priceVals[ctx.p1DataIndex];
+          return (hasIncome[ctx.p0DataIndex]||hasIncome[ctx.p1DataIndex]) ? 2 + Math.min(4,(g0+g1)/600) : 1.5;
         },
-        borderDash: function(ctx) {
-          const h0 = hasIncome[ctx.p0DataIndex];
-          const h1 = hasIncome[ctx.p1DataIndex];
-          return (h0 || h1) ? [] : [4, 3];
-        },
+        borderDash: function(ctx) { return (hasIncome[ctx.p0DataIndex]||hasIncome[ctx.p1DataIndex]) ? [] : [4,3]; },
       },
     };
   });
@@ -2856,222 +1389,134 @@ function buildChart() {
   if (chart) chart.destroy();
   chart = new Chart(document.getElementById('mainChart'), {
     type: 'line',
-    data: { labels, datasets },
+    data: { labels: labels, datasets: datasets },
     options: {
       responsive: true,
       interaction: { mode: 'index', intersect: false },
       plugins: {
         legend: {
-          labels: {
-            color: 'var(--muted)',
-            font: { family: 'DM Mono', size: 11 },
-            boxWidth: 12, padding: 18, usePointStyle: true,
-            pointStyle: 'circle',
-          },
-          onClick: function(e, legendItem, legend) {
-            const idx = legendItem.datasetIndex;
-            const meta = legend.chart.getDatasetMeta(idx);
-            meta.hidden = !meta.hidden;
-            legend.chart.update();
-          }
+          labels: { color: 'var(--muted)', font: { family: 'DM Mono', size: 11 }, boxWidth: 12, padding: 18, usePointStyle: true, pointStyle: 'circle' },
+          onClick: function(e, legendItem, legend) { var meta = legend.chart.getDatasetMeta(legendItem.datasetIndex); meta.hidden = !meta.hidden; legend.chart.update(); }
         },
         tooltip: {
           backgroundColor: 'var(--surface)', borderColor: 'var(--border2)', borderWidth: 1,
           titleColor: 'var(--text)', bodyColor: 'var(--muted)',
           titleFont: { family: 'DM Mono', size: 11 }, bodyFont: { family: 'DM Mono', size: 11 },
-          itemSort: function(a, b) { return b.parsed.y - a.parsed.y; },
+          itemSort: function(a,b){ return b.parsed.y - a.parsed.y; },
           callbacks: {
             label: function(ctx) {
-              const totalVal = Math.round(ctx.parsed.y);
-              const priceVal = Math.round(ctx.dataset.priceData[ctx.dataIndex]);
-              const income   = Math.max(0, totalVal - priceVal);
-              const totalPct = (((totalVal - START) / START) * 100).toFixed(1);
-              const sign = parseFloat(totalPct) >= 0 ? '+' : '';
-              return [
-                ' ' + ctx.dataset.label + ': $' + totalVal.toLocaleString() + ' (' + sign + totalPct + '%)',
-                '   ├ Price:   $' + priceVal.toLocaleString(),
-                '   └ Income: +$' + income.toLocaleString(),
-              ];
+              var totalVal = Math.round(ctx.parsed.y);
+              var priceVal = Math.round(ctx.dataset.priceData[ctx.dataIndex]);
+              var income   = Math.max(0, totalVal - priceVal);
+              var totalPct = (((totalVal - START) / START) * 100).toFixed(1);
+              var sign = parseFloat(totalPct) >= 0 ? '+' : '';
+              return [' '+ctx.dataset.label+': $'+totalVal.toLocaleString()+' ('+sign+totalPct+'%)','   ├ Price:   $'+priceVal.toLocaleString(),'   └ Income: +$'+income.toLocaleString()];
             },
-            labelColor: function(ctx) {
-              const col = ctx.dataset.borderColor;
-              return { borderColor: col, backgroundColor: col, borderWidth: 2, borderRadius: 2 };
-            },
+            labelColor: function(ctx) { var c=ctx.dataset.borderColor; return {borderColor:c,backgroundColor:c,borderWidth:2,borderRadius:2}; },
           }
         }
       },
       scales: {
         x: { grid: { color: 'rgba(128,128,128,0.15)' }, ticks: { color: 'var(--muted)', font: { family: 'DM Mono', size: 11 } } },
-        y: { grid: { color: 'rgba(128,128,128,0.15)' }, ticks: { color: 'var(--muted)', font: { family: 'DM Mono', size: 11 }, callback: function(v) { return '$' + v.toLocaleString(); } } }
+        y: { grid: { color: 'rgba(128,128,128,0.15)' }, ticks: { color: 'var(--muted)', font: { family: 'DM Mono', size: 11 }, callback: function(v){ return '$'+v.toLocaleString(); } } }
       }
     }
   });
 }
 
-
+// ════════════════════════════════════════════
+// CARDS
+// ════════════════════════════════════════════
 function buildCards() {
-  const container = document.getElementById('cards');
+  var container = document.getElementById('cards');
   container.innerHTML = '';
-  const recovery = currentScenario === 'down' ? currentRecovery : 'grind';
+  var recovery = currentScenario === 'down' ? currentRecovery : 'grind';
+  var incomeLabels = {ordinary:'Ordinary Income', qualified:'Qualified Divs', mixed:'Mixed 60/40', return:'Return of Capital'};
+  var accountLabels = {roth:'Roth IRA', ira:'Traditional IRA', brokerage:'Brokerage', either:'Either'};
 
   if (currentScenario === 'down') {
-    const note = document.createElement('div');
-    note.className = 'note-box';
-    note.style.gridColumn = '1 / -1';
-    note.style.order = '99';
-    note.innerHTML = "<strong>Downturn scenario:</strong> Both correlated markets drop " + (instruments[0] ? instruments[0].__downturnPct : 20) + "% in Yr 1. Beta determines each instrument's drawdown. Elevated VIX spikes options premiums — helps income but does not offset NAV losses short-term.<br><strong style='color:#c8a96e;'>Recovery:</strong> <strong>V-Shape</strong> = snaps back like 2020. <strong>Grind</strong> = 3yr cycle. <strong>Slog</strong> = structural bear, below ATH at Yr 5.";
+    var note = document.createElement('div'); note.className = 'note-box'; note.style.gridColumn = '1 / -1';
+    note.innerHTML = '<strong>Downturn scenario:</strong> Market drops ' + (instruments[0]?instruments[0].__downturnPct:20) + '% in Yr 1. Beta determines each instrument drawdown.<br><strong style="color:var(--accent)">Recovery:</strong> <strong>V-Shape</strong> = snaps back like 2020. <strong>Grind</strong> = 3yr cycle. <strong>Slog</strong> = below ATH at Yr 5.';
     container.appendChild(note);
   }
 
-  const incomeLabels = {ordinary:'Ordinary Income', qualified:'Qualified Divs', mixed:'Mixed 60/40', return:'Return of Capital'};
-  const accountLabels = {roth:'Roth IRA', ira:'Traditional IRA', brokerage:'Brokerage', either:'Either'};
-
   instruments.forEach(function(inst, i) {
-    const mults = inst.mults[currentScenario];
-    const adjR = currentScenario === 'down' ? getRecoveryMultiplier(mults.reinvest, mults.yr1drop, recovery) : mults.reinvest;
-    const adjS = currentScenario === 'down' ? getRecoveryMultiplier(mults.spend, mults.yr1drop, recovery) : mults.spend;
-    const er = inst.er;
-    const endR = Math.round(START * applyFees(adjR, er, 5));
-    const endS = Math.round(START * applyFees(adjS, er, 5));
-    const feeCost = Math.round(START * adjR) - endR;
-    const avgPort = (START + endS) / 2;
-    const totalIncome = Math.round(avgPort * (inst.yield / 100) * 5);
-    const spendTotal = endS + totalIncome;
-    const netReturnPct = ((applyFees(adjR, er, 5) - 1) * 100).toFixed(0);
-    const col = COLORS[i];
+    var mults = inst.mults[currentScenario];
+    var adjR = currentScenario === 'down' ? getRecoveryMultiplier(mults.reinvest, mults.yr1drop, recovery) : mults.reinvest;
+    var adjS = currentScenario === 'down' ? getRecoveryMultiplier(mults.spend,    mults.yr1drop, recovery) : mults.spend;
+    var er = inst.er;
+    var endR = Math.round(START * applyFees(adjR, er, 5));
+    var endS = Math.round(START * applyFees(adjS, er, 5));
+    var feeCost = Math.round(START * adjR) - endR;
+    var avgPort = (START + endS) / 2;
+    var totalIncome = Math.round(avgPort * (inst.yield / 100) * 5);
+    var spendTotal = endS + totalIncome;
+    var netReturnPct = ((applyFees(adjR, er, 5) - 1) * 100).toFixed(0);
+    var col = COLORS[i];
 
-    const card = document.createElement('div');
-    card.className = 'result-card';
-
-    // color bar
-    const bar = document.createElement('div');
-    bar.style.cssText = 'position:absolute;top:0;left:0;right:0;height:2px;border-radius:10px 10px 0 0;background:' + col;
-    card.appendChild(bar);
-
-    // ticker label row
-    const tickerRow = document.createElement('div');
-    tickerRow.className = 'ticker-label';
-    tickerRow.innerHTML = '<span style="color:' + col + '">' + inst.ticker + '</span><span>' + er.toFixed(2) + '% ER</span>';
-    card.appendChild(tickerRow);
-
-    // name
-    const name = document.createElement('div');
-    name.className = 'ticker-name';
-    name.textContent = inst.name || inst.ticker;
-    card.appendChild(name);
-
-    // vals grid
-    const valsGrid = document.createElement('div');
-    valsGrid.className = 'vals-grid';
-    valsGrid.innerHTML =
-      '<div class="val-block"><div class="vl">Reinvest → 5yr</div><div class="vn" style="color:var(--accent)">$' + endR.toLocaleString() + '</div><div class="vs">' + netReturnPct + '% net return</div></div>' +
-      '<div class="val-block"><div class="vl">Spend → Portfolio</div><div class="vn" style="color:var(--muted)">$' + endS.toLocaleString() + '</div><div class="vs">+$' + totalIncome.toLocaleString() + ' income</div></div>';
+    var card = document.createElement('div'); card.className = 'result-card';
+    var bar = document.createElement('div'); bar.style.cssText = 'position:absolute;top:0;left:0;right:0;height:2px;border-radius:10px 10px 0 0;background:'+col; card.appendChild(bar);
+    var tickerRow = document.createElement('div'); tickerRow.className = 'ticker-label'; tickerRow.innerHTML = '<span style="color:'+col+'">'+inst.ticker+'</span><span>'+er.toFixed(2)+'% ER</span>'; card.appendChild(tickerRow);
+    var name = document.createElement('div'); name.className = 'ticker-name'; name.textContent = inst.name || inst.ticker; card.appendChild(name);
+    var valsGrid = document.createElement('div'); valsGrid.className = 'vals-grid';
+    valsGrid.innerHTML = '<div class="val-block"><div class="vl">Reinvest → 5yr</div><div class="vn" style="color:var(--accent)">$'+endR.toLocaleString()+'</div><div class="vs">'+netReturnPct+'% net return</div></div><div class="val-block"><div class="vl">Spend → Portfolio</div><div class="vn" style="color:var(--muted)">$'+endS.toLocaleString()+'</div><div class="vs">+$'+totalIncome.toLocaleString()+' income</div></div>';
     card.appendChild(valsGrid);
-
-    // divider
-    const div1 = document.createElement('div');
-    div1.className = 'divider';
-    card.appendChild(div1);
-
-    // bottom vals
-    const bottomVals = document.createElement('div');
-    bottomVals.className = 'bottom-vals';
-    bottomVals.innerHTML =
-      '<div class="val-block"><div class="vl">Spend total</div><div class="vn" style="color:var(--accent2);font-size:0.9rem">$' + spendTotal.toLocaleString() + '</div></div>' +
-      '<div class="val-block"><div class="vl">5yr fee drag</div><div class="vn" style="color:var(--danger);font-size:0.9rem">-$' + feeCost.toLocaleString() + '</div></div>';
+    var div1 = document.createElement('div'); div1.className = 'divider'; card.appendChild(div1);
+    var bottomVals = document.createElement('div'); bottomVals.className = 'bottom-vals';
+    bottomVals.innerHTML = '<div class="val-block"><div class="vl">Spend total</div><div class="vn" style="color:var(--accent2);font-size:0.9rem">$'+spendTotal.toLocaleString()+'</div></div><div class="val-block"><div class="vl">5yr fee drag</div><div class="vn" style="color:var(--danger);font-size:0.9rem">-$'+feeCost.toLocaleString()+'</div></div>';
     card.appendChild(bottomVals);
 
-    // toggle button
-    const toggleBtn = document.createElement('button');
-    toggleBtn.className = 'info-toggle';
-    toggleBtn.id = 'toggle_' + i;
-    toggleBtn.textContent = 'ℹ︎ Variables';
-    toggleBtn.onclick = function() { toggleInfo(i); };
-    card.appendChild(toggleBtn);
+    var toggleBtn = document.createElement('button'); toggleBtn.className = 'info-toggle'; toggleBtn.id = 'toggle_'+i; toggleBtn.textContent = 'ⓘ Variables';
+    toggleBtn.onclick = function(){ toggleInfo(i); }; card.appendChild(toggleBtn);
 
-    // drawer
-    const drawer = document.createElement('div');
-    drawer.className = 'info-drawer';
-    drawer.id = 'drawer_' + i;
-
-    const avgCapPct = Math.min(inst.avgCapture, 100);
-    const bullCapPct = Math.min(inst.bullCapture, 100);
-    const betaPct = Math.min(inst.downturnBeta * 100, 100);
-
-    drawer.innerHTML =
-      '<div class="info-row">' +
-        '<div class="info-item"><div class="il">Annual Yield</div><div class="iv" style="color:' + col + '">' + inst.yield.toFixed(1) + '%</div></div>' +
-        '<div class="info-item"><div class="il">Expense Ratio</div><div class="iv">' + inst.er.toFixed(2) + '%/yr</div></div>' +
-        '<div class="info-item"><div class="il">Downturn Beta</div><div class="iv">' + inst.downturnBeta.toFixed(2) + 'x</div></div>' +
-        '<div class="info-item"><div class="il">Income Type</div><div class="iv">' + (incomeLabels[inst.incomeType] || inst.incomeType) + '</div></div>' +
-      '</div>' +
-      '<div class="info-bar-wrap"><div class="info-bar-label"><span>Avg Mkt Capture</span><span>' + inst.avgCapture + '%</span></div><div class="info-bar-track"><div class="info-bar-fill" style="width:' + avgCapPct + '%;background:' + col + '88"></div></div></div>' +
-      '<div class="info-bar-wrap" style="margin-top:6px"><div class="info-bar-label"><span>Bull Mkt Capture</span><span>' + inst.bullCapture + '%</span></div><div class="info-bar-track"><div class="info-bar-fill" style="width:' + bullCapPct + '%;background:' + col + '"></div></div></div>' +
-      '<div class="info-bar-wrap" style="margin-top:6px"><div class="info-bar-label"><span>Downturn Exposure</span><span>' + (inst.downturnBeta * 100).toFixed(0) + '% of drop</span></div><div class="info-bar-track"><div class="info-bar-fill" style="width:' + betaPct + '%;background:var(--danger)"></div></div></div>' +
-      '<div style="margin-top:10px;font-size:0.58rem;color:var(--muted)">Best account: <span style="color:var(--accent)">' + (accountLabels[inst.accountRec] || inst.accountRec) + '</span></div>';
-
+    var drawer = document.createElement('div'); drawer.className = 'info-drawer'; drawer.id = 'drawer_'+i;
+    var avgCapPct = Math.min(inst.avgCapture,100); var bullCapPct = Math.min(inst.bullCapture,100); var betaPct = Math.min(inst.downturnBeta*100,100);
+    drawer.innerHTML = '<div class="info-row"><div class="info-item"><div class="il">Annual Yield</div><div class="iv" style="color:'+col+'">'+inst.yield.toFixed(1)+'%</div></div><div class="info-item"><div class="il">Expense Ratio</div><div class="iv">'+inst.er.toFixed(2)+'%/yr</div></div><div class="info-item"><div class="il">Downturn Beta</div><div class="iv">'+inst.downturnBeta.toFixed(2)+'x</div></div><div class="info-item"><div class="il">Income Type</div><div class="iv">'+(incomeLabels[inst.incomeType]||inst.incomeType)+'</div></div></div><div class="info-bar-wrap"><div class="info-bar-label"><span>Avg Mkt Capture</span><span>'+inst.avgCapture+'%</span></div><div class="info-bar-track"><div class="info-bar-fill" style="width:'+avgCapPct+'%;background:'+col+'88"></div></div></div><div class="info-bar-wrap" style="margin-top:6px"><div class="info-bar-label"><span>Bull Mkt Capture</span><span>'+inst.bullCapture+'%</span></div><div class="info-bar-track"><div class="info-bar-fill" style="width:'+bullCapPct+'%;background:'+col+'"></div></div></div><div class="info-bar-wrap" style="margin-top:6px"><div class="info-bar-label"><span>Downturn Exposure</span><span>'+(inst.downturnBeta*100).toFixed(0)+'% of drop</span></div><div class="info-bar-track"><div class="info-bar-fill" style="width:'+betaPct+'%;background:var(--danger)"></div></div></div><div style="margin-top:10px;font-size:0.58rem;color:var(--muted)">Best account: <span style="color:var(--accent)">'+(accountLabels[inst.accountRec]||inst.accountRec)+'</span></div>';
     card.appendChild(drawer);
     container.appendChild(card);
   });
 }
 
 function toggleInfo(i) {
-  const drawer = document.getElementById(`drawer_${i}`);
-  const btn    = document.getElementById(`toggle_${i}`);
-  const isOpen = drawer.classList.contains('open');
+  var drawer = document.getElementById('drawer_' + i);
+  var btn    = document.getElementById('toggle_' + i);
+  var isOpen = drawer.classList.contains('open');
   drawer.classList.toggle('open', !isOpen);
   btn.classList.toggle('open', !isOpen);
-  btn.textContent = isOpen ? 'ℹ︎ Variables' : '✕ Close';
+  btn.textContent = isOpen ? 'ⓘ Variables' : '✕ Close';
 }
 
+// ════════════════════════════════════════════
+// TAX GRID
+// ════════════════════════════════════════════
 function buildTaxGrid() {
-  const grid = document.getElementById('taxGrid');
-  const accountLabels = {
-    roth: '✦ Roth IRA (Best)',
-    ira: '✦ Traditional IRA',
-    brokerage: '✦ Brokerage OK',
-    either: '✦ Either works',
+  var grid = document.getElementById('taxGrid');
+  var accountLabels = { roth:'❆ Roth IRA (Best)', ira:'❆ Traditional IRA', brokerage:'❆ Brokerage OK', either:'❆ Either works' };
+  var incomeDesc = {
+    ordinary: 'Distributions taxed as <strong>ordinary income</strong> — your highest marginal rate. Sheltering in a Roth means all income compounds tax-free.',
+    qualified: '<strong>Qualified dividends</strong> — taxed at favorable long-term cap gains rates (0%, 15%, or 20%). Brokerage is more tolerable. Roth still wins long-term.',
+    mixed: 'Mixed treatment: ~60% at long-term cap gains rates, ~40% ordinary income. Brokerage-viable. Roth still optimal.',
+    return: 'Return of capital distributions are <strong>tax-deferred</strong> — they reduce your cost basis. Often brokerage-friendly. Consult a CPA.',
   };
-  const incomeDesc = {
-    ordinary: 'Distributions taxed as <strong>ordinary income</strong> — your highest marginal rate. Sheltering in a Roth means all income compounds tax-free. Avoid brokerage if in a high bracket.',
-    qualified: 'Distributions are <strong>qualified dividends</strong> — taxed at favorable long-term cap gains rates (0%, 15%, or 20%). Brokerage is more tolerable. Roth still wins long-term.',
-    mixed: 'Mixed treatment: ~60% at long-term cap gains rates, ~40% ordinary income. More brokerage-friendly than pure ordinary income. Roth still optimal, but brokerage is viable.',
-    return: 'Return of capital distributions are <strong>tax-deferred</strong> — they reduce your cost basis. Often brokerage-friendly. Consult a CPA as basis tracking is required.',
-  };
-
-  grid.innerHTML = instruments.map((inst, i) => {
-    const col = COLORS[i];
-    return `
-      <div class="tax-item">
-        <div class="tax-ticker" style="color:${col}">${inst.ticker}</div>
-        <div class="tax-rec">${accountLabels[inst.accountRec] || '✦ Roth IRA'}</div>
-        <div class="tax-desc">${incomeDesc[inst.incomeType] || incomeDesc.ordinary}</div>
-        <div style="margin-top:8px">
-          ${inst.accountRec === 'roth'      ? '<span class="pill best">Roth IRA</span><span class="pill mid">Trad IRA</span><span class="pill worst">Brokerage</span>' : ''}
-          ${inst.accountRec === 'ira'       ? '<span class="pill mid">Trad IRA</span><span class="pill best">Roth IRA</span><span class="pill worst">Brokerage</span>' : ''}
-          ${inst.accountRec === 'brokerage' ? '<span class="pill best">Roth IRA</span><span class="pill mid">Brokerage</span><span class="pill worst">Trad IRA</span>' : ''}
-          ${inst.accountRec === 'either'    ? '<span class="pill best">Roth IRA</span><span class="pill mid">Brokerage</span><span class="pill mid">Trad IRA</span>' : ''}
-        </div>
-      </div>
-    `;
+  grid.innerHTML = instruments.map(function(inst, i) {
+    var col = COLORS[i];
+    return '<div class="tax-item"><div class="tax-ticker" style="color:'+col+'">'+inst.ticker+'</div><div class="tax-rec">'+(accountLabels[inst.accountRec]||'❆ Roth IRA')+'</div><div class="tax-desc">'+(incomeDesc[inst.incomeType]||incomeDesc.ordinary)+'</div></div>';
   }).join('');
 }
 
 // ════════════════════════════════════════════
 // CONTROLS
 // ════════════════════════════════════════════
-
 function setScenario(s, btn) {
   currentScenario = s;
-  document.querySelectorAll('[data-scenario]').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('[data-scenario]').forEach(function(b){ b.classList.remove('active'); });
   btn.classList.add('active');
-  const rg = document.getElementById('recoveryGroup');
+  var rg = document.getElementById('recoveryGroup');
   if (rg) rg.style.display = s === 'down' ? 'flex' : 'none';
-
-  const descs = {
-    down: `${document.getElementById('downturnPct')?.value || 20}% market drop yr 1 — recovery speed adjustable below`,
-    avg:  `Avg market: +${document.getElementById('avgReturn')?.value || 5}%/yr — solid/thick line = income component`,
-    bull: `Bull run: +${document.getElementById('bullReturn')?.value || 15}%/yr — upside capture rate is the key differentiator`,
+  var descs = {
+    down: (document.getElementById('downturnPct')?document.getElementById('downturnPct').value:20) + '% market drop yr 1 — recovery speed adjustable below',
+    avg:  'Avg market: +' + (document.getElementById('avgReturn')?document.getElementById('avgReturn').value:5) + '%/yr — solid line = income component',
+    bull: 'Bull run: +' + (document.getElementById('bullReturn')?document.getElementById('bullReturn').value:15) + '%/yr — upside capture rate is the key differentiator',
   };
   document.getElementById('scenarioDesc').textContent = descs[s];
   buildChart(); buildCards();
@@ -3079,163 +1524,127 @@ function setScenario(s, btn) {
 
 function setRecovery(r, btn) {
   currentRecovery = r;
-  document.querySelectorAll('[data-recovery]').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('[data-recovery]').forEach(function(b){ b.classList.remove('active'); });
   btn.classList.add('active');
   buildChart(); buildCards();
 }
 
 function setView(v, btn) {
   currentView = v;
-  btn.parentElement.querySelectorAll('.btn').forEach(b => b.classList.remove('active'));
+  btn.parentElement.querySelectorAll('.btn').forEach(function(b){ b.classList.remove('active'); });
   btn.classList.add('active');
   buildChart();
 }
 
 // ════════════════════════════════════════════
-// SETUP → RESULTS
+// CLEAR / RUN / BACK
 // ════════════════════════════════════════════
-
 function clearTickers() {
   if (!confirm('Clear all tickers and reset rows?')) return;
   try { sessionStorage.removeItem('projector_rows'); } catch(e) {}
   buildSetupCards();
-  setTimeout(function() {
-    const t = document.getElementById('ticker_0');
-    if (t) { t.focus(); t.select(); }
-  }, 50);
+  setTimeout(function(){ var t = document.getElementById('ticker_0'); if (t){ t.focus(); t.select(); } }, 50);
 }
 
 function runProjection() {
-  // Save current row data to sessionStorage so it persists across runs
-  const rowData = Array.from({length: NUM_INSTRUMENTS}, (_, i) => ({
-    ticker:      (document.getElementById('ticker_'  + i)?.value || '').toUpperCase(),
-    name:        document.getElementById('name_'    + i)?.value || '',
-    yield:       parseFloat(document.getElementById('yield_'   + i)?.value) || 0,
-    er:          parseFloat(document.getElementById('er_'      + i)?.value) || 0,
-    downturnBeta: parseFloat(document.getElementById('beta_'   + i)?.value) || 1,
-    avgCapture:  (parseFloat(document.getElementById('avgcap_'  + i)?.value) || 100) / 100,
-    bullCapture: (parseFloat(document.getElementById('bullcap_' + i)?.value) || 100) / 100,
-    incomeType:  document.getElementById('inctype_' + i)?.value || 'ordinary',
-    accountRec:  document.getElementById('accrec_'  + i)?.value || 'roth',
-  }));
+  var rowData = Array.from({length: NUM_INSTRUMENTS}, function(_,i){ return {
+    ticker:      (document.getElementById('ticker_'+i)?document.getElementById('ticker_'+i).value:'').toUpperCase(),
+    name:        document.getElementById('name_'+i)?document.getElementById('name_'+i).value:'',
+    yield:       parseFloat(document.getElementById('yield_'+i)?document.getElementById('yield_'+i).value:0)||0,
+    er:          parseFloat(document.getElementById('er_'+i)?document.getElementById('er_'+i).value:0)||0,
+    downturnBeta: parseFloat(document.getElementById('beta_'+i)?document.getElementById('beta_'+i).value:1)||1,
+    avgCapture:  (parseFloat(document.getElementById('avgcap_'+i)?document.getElementById('avgcap_'+i).value:100)||100)/100,
+    bullCapture: (parseFloat(document.getElementById('bullcap_'+i)?document.getElementById('bullcap_'+i).value:100)||100)/100,
+    incomeType:  document.getElementById('inctype_'+i)?document.getElementById('inctype_'+i).value:'ordinary',
+    accountRec:  document.getElementById('accrec_'+i)?document.getElementById('accrec_'+i).value:'roth',
+  }; });
   try { sessionStorage.setItem('projector_rows', JSON.stringify(rowData)); } catch(e) {}
 
-  // Read global settings - inputs exist in DOM even when drawer is hidden
-  const startEl = document.getElementById('startAmount');
-  const downEl  = document.getElementById('downturnPct');
-  const avgEl   = document.getElementById('avgReturn');
-  const bullEl  = document.getElementById('bullReturn');
+  var startEl = document.getElementById('startAmount');
+  var downEl  = document.getElementById('downturnPct');
+  var avgEl   = document.getElementById('avgReturn');
+  var bullEl  = document.getElementById('bullReturn');
   START = (startEl && parseFloat(startEl.value) > 0) ? parseFloat(startEl.value) : 10000;
-  const downturnPct = (downEl  && parseFloat(downEl.value)  > 0) ? parseFloat(downEl.value)  : 20;
-  const avgReturn   = (avgEl   && parseFloat(avgEl.value)   > 0) ? parseFloat(avgEl.value)   : 5;
-  const bullReturn  = (bullEl  && parseFloat(bullEl.value)  > 0) ? parseFloat(bullEl.value)  : 15;
-  console.log('START:', START, 'downturn:', downturnPct, 'avg:', avgReturn, 'bull:', bullReturn);
+  var downturnPct = (downEl && parseFloat(downEl.value) > 0) ? parseFloat(downEl.value) : 20;
+  var avgReturn   = (avgEl  && parseFloat(avgEl.value)  > 0) ? parseFloat(avgEl.value)  : 5;
+  var bullReturn  = (bullEl && parseFloat(bullEl.value) > 0) ? parseFloat(bullEl.value) : 15;
 
   instruments = [];
-  for (let i = 0; i < NUM_INSTRUMENTS; i++) {
-    const tickerVal = (document.getElementById('ticker_' + i)?.value || '').trim();
-    if (!tickerVal) continue; // skip empty rows
-    const ticker  = (document.getElementById(`ticker_${i}`).value || `Fund ${i+1}`).toUpperCase();
-    const name    = document.getElementById(`name_${i}`).value || ticker;
-    const yld     = parseFloat(document.getElementById(`yield_${i}`).value)   || 0;
-    const er      = parseFloat(document.getElementById(`er_${i}`).value)      || 0;
-    const beta    = parseFloat(document.getElementById(`beta_${i}`).value)    || 1;
-    const avgCap  = parseFloat(document.getElementById(`avgcap_${i}`).value)  || 80;
-    const bullCap = parseFloat(document.getElementById(`bullcap_${i}`).value) || 70;
-    const incType = document.getElementById(`inctype_${i}`).value;
-    const accRec  = document.getElementById(`accrec_${i}`).value;
-
-    const inst = { ticker, name, yield: yld, er, downturnBeta: beta, avgCapture: avgCap, bullCapture: bullCap, incomeType: incType, accountRec: accRec, __downturnPct: downturnPct };
+  for (var i = 0; i < NUM_INSTRUMENTS; i++) {
+    var tickerEl = document.getElementById('ticker_' + i);
+    var tickerVal = tickerEl ? tickerEl.value.trim() : '';
+    if (!tickerVal) continue;
+    var ticker   = tickerVal.toUpperCase();
+    var nameEl   = document.getElementById('name_'+i);
+    var yieldEl  = document.getElementById('yield_'+i);
+    var erEl2    = document.getElementById('er_'+i);
+    var betaEl   = document.getElementById('beta_'+i);
+    var avgcapEl = document.getElementById('avgcap_'+i);
+    var bullcapEl= document.getElementById('bullcap_'+i);
+    var inctypeEl= document.getElementById('inctype_'+i);
+    var accrecEl = document.getElementById('accrec_'+i);
+    var yld  = parseFloat(yieldEl?yieldEl.value:0)   || 0;
+    var er   = parseFloat(erEl2?erEl2.value:0)        || 0;
+    var beta = parseFloat(betaEl?betaEl.value:1)      || 1;
+    var avgCap  = parseFloat(avgcapEl?avgcapEl.value:100) || 100;
+    var bullCap = parseFloat(bullcapEl?bullcapEl.value:100)|| 100;
+    var incType = inctypeEl ? inctypeEl.value : 'ordinary';
+    var accRec  = accrecEl  ? accrecEl.value  : 'roth';
+    var inst = { ticker:ticker, name:nameEl?nameEl.value:ticker, yield:yld, er:er, downturnBeta:beta, avgCapture:avgCap, bullCapture:bullCap, incomeType:incType, accountRec:accRec, __downturnPct:downturnPct };
     inst.mults = computeScenarioMultipliers(inst, downturnPct, avgReturn, bullReturn);
     instruments.push(inst);
   }
 
-  document.getElementById('resultsMeta').textContent =
-    `$${START.toLocaleString()} starting · Net of fees · ${new Date().getFullYear()}–${new Date().getFullYear()+5}`;
+  if (instruments.length === 0) { alert('Please enter at least one ticker.'); return; }
 
-  document.getElementById('scenarioDesc').textContent =
-    `${downturnPct}% market drop yr 1 — recovery speed adjustable above`;
-
-  document.getElementById('footerNote').innerHTML =
-    `All projections are illustrative estimates only — not financial advice.<br>
-     Returns are net of expense ratios. Yield assumed constant; actual distributions vary.<br>
-     Reinvest assumes all distributions immediately reinvested. Spend assumes distributions taken as cash.`;
-
-  if (instruments.length === 0) {
-    alert('Please enter at least one ticker symbol.');
-    return;
-  }
+  document.getElementById('resultsMeta').textContent = '$'+START.toLocaleString()+' starting · Net of fees · '+new Date().getFullYear()+'–'+(new Date().getFullYear()+5);
+  document.getElementById('scenarioDesc').textContent = downturnPct+'% market drop yr 1 — recovery speed adjustable above';
+  document.getElementById('footerNote').innerHTML = 'All projections are illustrative estimates only — not financial advice.<br>Returns are net of expense ratios. Yield assumed constant; actual distributions vary.';
 
   document.getElementById('setupScreen').style.display = 'none';
   document.getElementById('resultsScreen').style.display = 'block';
 
-  // Reset controls
   currentScenario = 'down'; currentView = 'both'; currentRecovery = 'grind';
-  document.querySelectorAll('[data-scenario]').forEach((b,i) => b.classList.toggle('active', i===0));
-  document.querySelectorAll('[data-recovery]').forEach((b,i) => b.classList.toggle('active', i===1));
-  document.getElementById('recoveryGroup').style.display = 'flex';
+  document.querySelectorAll('[data-scenario]').forEach(function(b,i){ b.classList.toggle('active', i===0); });
+  document.querySelectorAll('[data-recovery]').forEach(function(b,i){ b.classList.toggle('active', i===1); });
+  var rg = document.getElementById('recoveryGroup'); if (rg) rg.style.display = 'flex';
 
-  try {
-    buildChart();
-    buildCards();
-    buildTaxGrid();
-  } catch(err) {
-    console.error('Build error:', err);
-    alert('Error rendering results: ' + err.message + '\n\nCheck browser console for details.');
-    document.getElementById('resultsScreen').style.display = 'none';
-    document.getElementById('setupScreen').style.display = 'flex';
-  }
+  try { buildChart(); buildCards(); buildTaxGrid(); }
+  catch(err) { console.error('Build error:', err); alert('Error: '+err.message); document.getElementById('resultsScreen').style.display='none'; document.getElementById('setupScreen').style.display='flex'; }
 }
 
 function goBack() {
   document.getElementById('resultsScreen').style.display = 'none';
   document.getElementById('setupScreen').style.display = 'flex';
-  setTimeout(function() {
-    const t = document.getElementById('ticker_0');
-    if (t) { t.focus(); t.select(); }
-  }, 50);
+  setTimeout(function(){ var t=document.getElementById('ticker_0'); if(t){t.focus();t.select();} }, 50);
 }
 
+// ════════════════════════════════════════════
+// THEME
+// ════════════════════════════════════════════
 function toggleTheme() {
-  const isDark = document.body.classList.contains('dark-mode');
+  var isDark = document.body.classList.contains('dark-mode');
   document.body.classList.toggle('dark-mode', !isDark);
-  const label = isDark ? '☽ Dark' : '☀ Light';
-  const btn1 = document.getElementById('themeBtn');
-  const btn2 = document.getElementById('themeBtnSetup');
-  if (btn1) btn1.textContent = label;
-  if (btn2) btn2.textContent = label;
+  var label = isDark ? '☽ Dark' : '☉ Light';
+  ['themeBtn','themeBtnSetup'].forEach(function(id){ var b=document.getElementById(id); if(b) b.textContent=label; });
   try { localStorage.setItem('theme', isDark ? 'light' : 'dark'); } catch(e) {}
-  // Redraw chart with new colors
-  if (typeof buildChart === 'function' && instruments.length) {
-    buildChart();
-  }
+  if (instruments.length) buildChart();
 }
 
-// Apply saved theme on load
+// ════════════════════════════════════════════
+// INIT
+// ════════════════════════════════════════════
 (function() {
-  var saved = '';
-  try { saved = localStorage.getItem('theme') || ''; } catch(e) {}
+  var saved = ''; try { saved = localStorage.getItem('theme')||''; } catch(e) {}
   var prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
   if (saved === 'dark' || (!saved && prefersDark)) {
     document.body.classList.add('dark-mode');
-    setTimeout(function() {
-      var b1 = document.getElementById('themeBtn');
-      var b2 = document.getElementById('themeBtnSetup');
-      if (b1) b1.textContent = '☀ Light';
-      if (b2) b2.textContent = '☀ Light';
-    }, 0);
+    setTimeout(function(){ ['themeBtn','themeBtnSetup'].forEach(function(id){ var b=document.getElementById(id); if(b) b.textContent='☉ Light'; }); }, 0);
   }
 })();
 
-// Init
 buildSetupCards();
-// Focus first ticker on load
-setTimeout(function() {
-  const t = document.getElementById('ticker_0');
-  if (t) { t.focus(); t.select(); }
-}, 50);
-
-// Tab/Enter navigation handled by onTickerKey()
+setTimeout(function(){ var t=document.getElementById('ticker_0'); if(t){t.focus();t.select();} }, 50);
 </script>
 </body>
 </html>
