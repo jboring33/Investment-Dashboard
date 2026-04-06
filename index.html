@@ -1158,30 +1158,48 @@ function buildChart() {
   const datasets = [];
   const recovery = currentScenario === 'down' ? currentRecovery : 'grind';
 
-  instruments.forEach((inst, i) => {
+  instruments.forEach(function(inst, i) {
     const mults = inst.mults[currentScenario];
     const adjR = currentScenario === 'down' ? getRecoveryMultiplier(mults.reinvest, mults.yr1drop, recovery) : mults.reinvest;
-    const adjS = currentScenario === 'down' ? getRecoveryMultiplier(mults.spend, mults.yr1drop, recovery) : mults.spend;
-    const rVals = buildPath(adjR, inst.er, mults.yr1drop, recovery);
-    const sVals = buildPath(adjS, inst.er, mults.yr1drop, recovery);
+    const adjS = currentScenario === 'down' ? getRecoveryMultiplier(mults.spend,    mults.yr1drop, recovery) : mults.spend;
+
+    // Total return path (reinvested): the full line
+    const totalVals = buildPath(adjR, inst.er, mults.yr1drop, recovery);
+
+    // Price-only path (no reinvestment): the base of the filled band
+    const priceVals = buildPath(adjS, inst.er, mults.yr1drop, recovery);
+
     const col = COLORS[i];
 
-    if (currentView !== 'spend') {
-      datasets.push({
-        label: `${inst.ticker} (Reinvest)`,
-        data: rVals, borderColor: col, backgroundColor: col + '18',
-        borderWidth: 2.5, fill: false, tension: 0.4, pointRadius: 4, pointHoverRadius: 6,
-      });
-    }
-    if (currentView !== 'reinvest') {
-      // Spend line: same color but 50% opacity and dashed
-      datasets.push({
-        label: `${inst.ticker} (Spend)`,
-        data: sVals, borderColor: col + '88', backgroundColor: 'transparent',
-        borderWidth: 1.5, borderDash: [6,3], fill: false, tension: 0.4, pointRadius: 2, pointHoverRadius: 5,
-        pointBackgroundColor: col + '88',
-      });
-    }
+    // Layer 1: Price-only as a filled area (the "floor")
+    // This creates the hollow/baseline for the price component
+    datasets.push({
+      label: inst.ticker + ' (Price)',
+      data: priceVals,
+      borderColor: col,
+      backgroundColor: col + '22',
+      borderWidth: 2,
+      borderDash: [],
+      fill: 'origin',
+      tension: 0.4,
+      pointRadius: 0,
+      pointHoverRadius: 5,
+      order: i * 2 + 2,
+    });
+
+    // Layer 2: Total return on top — the filled band between price and total IS the income
+    datasets.push({
+      label: inst.ticker + ' (+ Income)',
+      data: totalVals,
+      borderColor: col,
+      backgroundColor: col + '55',
+      borderWidth: 2.5,
+      fill: '-1',  // fill DOWN to the previous dataset (price line)
+      tension: 0.4,
+      pointRadius: 4,
+      pointHoverRadius: 6,
+      order: i * 2 + 1,
+    });
   });
 
   if (chart) chart.destroy();
@@ -1192,34 +1210,76 @@ function buildChart() {
       responsive: true,
       interaction: { mode: 'index', intersect: false },
       plugins: {
-        legend: { labels: { color: '#7a8a99', font: { family: 'DM Mono', size: 11 }, boxWidth: 14, padding: 14, usePointStyle: true } },
+        legend: {
+          labels: {
+            color: '#7a8a99',
+            font: { family: 'DM Mono', size: 11 },
+            boxWidth: 14, padding: 14, usePointStyle: true,
+            filter: function(item) {
+              // Only show "+ Income" lines in legend (suppress Price duplicates)
+              return item.text.indexOf('+ Income') !== -1;
+            },
+            generateLabels: function(chart) {
+              return chart.data.datasets
+                .filter(function(ds) { return ds.label.indexOf('+ Income') !== -1; })
+                .map(function(ds, i) {
+                  return {
+                    text: ds.label.replace(' (+ Income)', ''),
+                    fillStyle: ds.borderColor,
+                    strokeStyle: ds.borderColor,
+                    lineWidth: 2,
+                    hidden: false,
+                    index: i,
+                  };
+                });
+            }
+          }
+        },
         tooltip: {
           backgroundColor: '#161b20', borderColor: '#2a333c', borderWidth: 1,
           titleColor: '#d4dbe3', bodyColor: '#7a8a99',
           titleFont: { family: 'DM Mono', size: 11 }, bodyFont: { family: 'DM Mono', size: 11 },
-          itemSort: (a, b) => b.parsed.y - a.parsed.y,
+          itemSort: function(a, b) { return b.parsed.y - a.parsed.y; },
+          filter: function(item) {
+            // Only show "+ Income" lines in tooltip
+            return item.dataset.label.indexOf('+ Income') !== -1;
+          },
           callbacks: {
-            label: ctx => {
-              const pct = (((ctx.parsed.y - START) / START) * 100).toFixed(1);
-              const sign = pct >= 0 ? '+' : '';
-              return ` ${ctx.dataset.label}: $${ctx.parsed.y.toLocaleString()} (${sign}${pct}%)`;
+            label: function(ctx) {
+              const ticker = ctx.dataset.label.replace(' (+ Income)', '');
+              const total = ctx.parsed.y;
+              // Find the matching Price dataset value at same index
+              const priceDs = ctx.chart.data.datasets.find(function(ds) {
+                return ds.label === ticker + ' (Price)';
+              });
+              const priceVal = priceDs ? priceDs.data[ctx.dataIndex] : START;
+              const income = total - priceVal;
+              const totalPct = (((total - START) / START) * 100).toFixed(1);
+              const sign = totalPct >= 0 ? '+' : '';
+              return [
+                ' ' + ticker + ': $' + total.toLocaleString() + ' (' + sign + totalPct + '% total)',
+                '   ├ Price:  $' + priceVal.toLocaleString(),
+                '   └ Income: +$' + Math.max(0, income).toLocaleString(),
+              ];
             },
-            labelColor: ctx => ({
-              borderColor: ctx.dataset.borderColor,
-              backgroundColor: ctx.dataset.borderColor,
-              borderWidth: 2,
-              borderRadius: 2,
-            }),
+            labelColor: function(ctx) {
+              return {
+                borderColor: ctx.dataset.borderColor,
+                backgroundColor: ctx.dataset.borderColor,
+                borderWidth: 2, borderRadius: 2,
+              };
+            },
           }
         }
       },
       scales: {
         x: { grid: { color: '#1f262d' }, ticks: { color: '#556170', font: { family: 'DM Mono', size: 11 } } },
-        y: { grid: { color: '#1f262d' }, ticks: { color: '#556170', font: { family: 'DM Mono', size: 11 }, callback: v => '$' + v.toLocaleString() } }
+        y: { grid: { color: '#1f262d' }, ticks: { color: '#556170', font: { family: 'DM Mono', size: 11 }, callback: function(v) { return '$' + v.toLocaleString(); } } }
       }
     }
   });
 }
+
 
 function buildCards() {
   const container = document.getElementById('cards');
