@@ -1198,52 +1198,48 @@ function buildChart() {
     const priceVals = buildPath(adjPrice, inst.er, mults.yr1drop, recovery);
     const col = COLORS[i];
 
-    // Income ratio at each point: 0 = all price, 1 = heavy income
-    const incomeRatio = totalVals.map(function(v, idx) {
-      if (v <= START || v <= priceVals[idx]) return 0;
-      return Math.min(1, (v - priceVals[idx]) / (v - START));
+    // hasIncome[i] = true if total meaningfully exceeds price at that point
+    // Use absolute dollar gap: if total > price by more than $10, income is present
+    const hasIncome = totalVals.map(function(v, idx) {
+      return (v - priceVals[idx]) > 10;
     });
 
     return {
       label: inst.ticker,
       data: totalVals,
       priceData: priceVals,
-      incomeRatio: incomeRatio,
+      hasIncome: hasIncome,
       borderColor: col,
-      // Line width varies: thick where income is high
       borderWidth: 3,
       tension: 0.4,
       fill: false,
-      // Per-point: filled dot where income present, hollow where price-only
-      pointRadius: totalVals.map(function(v, idx) { return 5; }),
+      pointRadius: 5,
       pointHoverRadius: 7,
       pointBackgroundColor: totalVals.map(function(v, idx) {
-        return incomeRatio[idx] > 0.05 ? col : 'transparent';
+        return hasIncome[idx] ? col : 'transparent';
       }),
       pointBorderColor: col,
       pointBorderWidth: 2,
-      // Segment styling: solid+thick for income portion, dashed+thin for price-only
       segment: {
         borderColor: function(ctx) {
-          // Average income ratio across the two endpoints of this segment
-          const r0 = incomeRatio[ctx.p0DataIndex] || 0;
-          const r1 = incomeRatio[ctx.p1DataIndex] || 0;
-          const r = (r0 + r1) / 2;
-          if (r < 0.05) return col + '55'; // faded = price only
-          return col; // full color = income present
+          const h0 = hasIncome[ctx.p0DataIndex];
+          const h1 = hasIncome[ctx.p1DataIndex];
+          return (h0 || h1) ? col : col + '55';
         },
         borderWidth: function(ctx) {
-          const r0 = incomeRatio[ctx.p0DataIndex] || 0;
-          const r1 = incomeRatio[ctx.p1DataIndex] || 0;
-          const r = (r0 + r1) / 2;
-          // Thicker line = more income
-          return r < 0.05 ? 1.5 : 1.5 + r * 4;
+          const h0 = hasIncome[ctx.p0DataIndex];
+          const h1 = hasIncome[ctx.p1DataIndex];
+          // Thicker where income is larger relative to yield
+          if (!h0 && !h1) return 1.5;
+          const gap0 = totalVals[ctx.p0DataIndex] - priceVals[ctx.p0DataIndex];
+          const gap1 = totalVals[ctx.p1DataIndex] - priceVals[ctx.p1DataIndex];
+          const avgGap = (gap0 + gap1) / 2;
+          return 2 + Math.min(4, avgGap / 300);
         },
         borderDash: function(ctx) {
-          const r0 = incomeRatio[ctx.p0DataIndex] || 0;
-          const r1 = incomeRatio[ctx.p1DataIndex] || 0;
-          const r = (r0 + r1) / 2;
-          return r < 0.05 ? [4, 3] : []; // dashed = price only, solid = income
+          const h0 = hasIncome[ctx.p0DataIndex];
+          const h1 = hasIncome[ctx.p1DataIndex];
+          return (h0 || h1) ? [] : [4, 3];
         },
       },
     };
