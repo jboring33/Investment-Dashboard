@@ -659,12 +659,18 @@ input::placeholder { color: var(--muted); }
 .etf-modal-body {
   flex: 1;
   overflow-y: auto;
-  padding: 16px 24px;
+  padding: 0 24px 16px;
 }
 .etf-table {
   width: 100%;
   border-collapse: collapse;
   font-size: 0.68rem;
+}
+.etf-table thead {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background: var(--surface);
 }
 .etf-table th {
   text-align: left;
@@ -672,9 +678,17 @@ input::placeholder { color: var(--muted); }
   font-size: 0.58rem;
   letter-spacing: 0.1em;
   text-transform: uppercase;
-  padding: 6px 8px;
-  border-bottom: 1px solid var(--border2);
+  padding: 10px 8px 8px;
+  border-bottom: 2px solid var(--border2);
+  white-space: nowrap;
+  cursor: pointer;
+  user-select: none;
 }
+.etf-table th:hover { color: var(--accent); }
+.etf-table th.sort-asc::after  { content: ' ↑'; color: var(--accent); }
+.etf-table th.sort-desc::after { content: ' ↓'; color: var(--accent); }
+.etf-table th.no-sort { cursor: default; }
+.etf-table th.no-sort:hover { color: var(--muted); }
 .etf-table td {
   padding: 5px 8px;
   border-bottom: 1px solid var(--border);
@@ -904,16 +918,17 @@ input::placeholder { color: var(--muted); }
       <table class="etf-table" id="etfTable">
         <thead>
           <tr>
-            <th>Ticker</th>
-            <th>Name</th>
-            <th><span class="th-tip" data-tip="Trailing 12-month dividend/distribution yield as a % of current price. Higher = more income. Fetched live from Yahoo Finance.">Yield%</span></th>
-            <th><span class="th-tip" data-tip="Expense Ratio — the annual fee charged by the fund, deducted from returns. Lower is better. 0.03% = $3/yr per $10k.">ER%</span></th>
-            <th><span class="th-tip" data-tip="Downturn Beta — how much this fund drops relative to the market in a sell-off. 1.0 = moves with market. 0.7 = drops only 70% as much.">Beta</span></th>
-            <th><span class="th-tip" data-tip="Average Market Capture — what % of the market's average annual return this fund captures. 85% means if market returns 10%, fund returns ~8.5%.">Avg Cap%</span></th>
-            <th><span class="th-tip" data-tip="Bull Market Capture — what % of upside the fund captures in a strong rally. Covered-call funds typically have low bull capture (40-70%) because sold calls cap upside.">Bull Cap%</span></th>
-            <th><span class="th-tip" data-tip="Income Type — how distributions are taxed. Ordinary = highest rate. Qualified = lower cap gains rate. Mixed = both. Return of Capital = tax-deferred basis reduction.">Income</span></th>
-            <th><span class="th-tip" data-tip="Best Account — recommended account type for tax efficiency. Ordinary income funds belong in Roth/IRA. Qualified dividend funds are more brokerage-friendly.">Account</span></th>
-            <th></th>
+            <th onclick="sortEtfTable('ticker')" id="th-ticker">Ticker</th>
+            <th onclick="sortEtfTable('name')" id="th-name">Name</th>
+            <th onclick="sortEtfTable('description')" id="th-description">Description</th>
+            <th onclick="sortEtfTable('yield')"><span class="th-tip" data-tip="Trailing 12-month dividend/distribution yield as a % of current price. Fetched live from Yahoo Finance.">Yield%</span></th>
+            <th onclick="sortEtfTable('er')"><span class="th-tip" data-tip="Expense Ratio — annual fee charged by the fund. Lower is better. 0.03% = $3/yr per $10k.">ER%</span></th>
+            <th onclick="sortEtfTable('downturnBeta')"><span class="th-tip" data-tip="Downturn Beta — how much this fund drops vs the market. 1.0 = moves with market. 0.7 = drops only 70% as much.">Beta</span></th>
+            <th onclick="sortEtfTable('avgCapture')"><span class="th-tip" data-tip="Average Market Capture — % of market annual return this fund captures. 85% means if market returns 10%, fund returns ~8.5%.">Avg Cap%</span></th>
+            <th onclick="sortEtfTable('bullCapture')"><span class="th-tip" data-tip="Bull Market Capture — % of upside captured in a rally. Covered-call funds are typically 40-70% due to capped upside.">Bull Cap%</span></th>
+            <th onclick="sortEtfTable('incomeType')"><span class="th-tip" data-tip="How distributions are taxed: Ordinary = highest rate, Qualified = cap gains rate, Mixed = both, Return of Capital = tax-deferred.">Income</span></th>
+            <th onclick="sortEtfTable('accountRec')"><span class="th-tip" data-tip="Best account for tax efficiency. Ordinary income funds belong in Roth/IRA. Qualified dividend funds tolerate brokerage.">Account</span></th>
+            <th class="no-sort"></th>
           </tr>
         </thead>
         <tbody id="etfTableBody"></tbody>
@@ -1242,6 +1257,22 @@ function onTickerKey(e, i) {
 // ════════════════════════════════════════════
 var _etfEdits = {};
 
+var _etfSortCol = 'ticker';
+var _etfSortDir = 1; // 1 = asc, -1 = desc
+
+function sortEtfTable(col) {
+  if (_etfSortCol === col) _etfSortDir *= -1;
+  else { _etfSortCol = col; _etfSortDir = 1; }
+  // Update header classes
+  document.querySelectorAll('.etf-table th').forEach(function(th) {
+    th.classList.remove('sort-asc','sort-desc');
+    if (th.getAttribute('onclick') && th.getAttribute('onclick').indexOf(col) !== -1) {
+      th.classList.add(_etfSortDir === 1 ? 'sort-asc' : 'sort-desc');
+    }
+  });
+  renderEtfTable();
+}
+
 function openEtfManager()  { renderEtfTable(); document.getElementById('etfModal').classList.add('open'); }
 function closeEtfManager() { document.getElementById('etfModal').classList.remove('open'); }
 
@@ -1265,12 +1296,20 @@ function renderEtfTable() {
   var db = getTickerList();
   var tbody = document.getElementById('etfTableBody');
   tbody.innerHTML = '';
-  Object.keys(db).sort().forEach(function(t) {
+  var keys = Object.keys(db).sort(function(a, b) {
+    var col = _etfSortCol;
+    var va = col === 'ticker' ? a : (db[a][col] != null ? db[a][col] : '');
+    var vb = col === 'ticker' ? b : (db[b][col] != null ? db[b][col] : '');
+    if (typeof va === 'number' && typeof vb === 'number') return (va - vb) * _etfSortDir;
+    return String(va).localeCompare(String(vb)) * _etfSortDir;
+  });
+  keys.forEach(function(t) {
     var d = db[t];
     var tr = document.createElement('tr');
     function td(c) { var cell = document.createElement('td'); if (typeof c === 'string') cell.innerHTML = c; else cell.appendChild(c); return cell; }
     tr.appendChild(td('<span class="ticker-cell">' + t + '</span>'));
     tr.appendChild(td(makeInput('text',   d.name||'',        '',     'name',        t)));
+    tr.appendChild(td(makeInput('text',   d.description||'', '',     'description', t)));
     tr.appendChild(td(makeInput('number', d.yield||0,        '0.1',  'yield',       t)));
     tr.appendChild(td(makeInput('number', d.er||0,           '0.01', 'er',          t)));
     tr.appendChild(td(makeInput('number', d.downturnBeta||1, '0.05', 'downturnBeta',t)));
@@ -1298,14 +1337,21 @@ function deleteEtf(ticker) {
 function addEtfRow() {
   var t = (document.getElementById('newTicker').value||'').trim().toUpperCase();
   if (!t) { alert('Enter a ticker'); return; }
-  _etfEdits[t] = { name: document.getElementById('newName').value||t, yield: parseFloat(document.getElementById('newYield').value)||0, er: parseFloat(document.getElementById('newEr').value)||0, downturnBeta:1.0, avgCapture:85, bullCapture:70, incomeType:'ordinary', accountRec:'roth' };
+  _etfEdits[t] = { name: document.getElementById('newName').value||t, description: '', yield: parseFloat(document.getElementById('newYield').value)||0, er: parseFloat(document.getElementById('newEr').value)||0, downturnBeta:1.0, avgCapture:85, bullCapture:70, incomeType:'ordinary', accountRec:'roth' };
   document.getElementById('newTicker').value = document.getElementById('newName').value = document.getElementById('newYield').value = document.getElementById('newEr').value = '';
   renderEtfTable();
 }
 
 function saveEtfList() {
-  try { sessionStorage.setItem('etf_edits', JSON.stringify(_etfEdits)); } catch(e) {}
-  _etfEdits = {}; closeEtfManager();
+  try {
+    // Merge new edits on top of any previously saved edits
+    var prev = {};
+    try { prev = JSON.parse(sessionStorage.getItem('etf_edits') || '{}'); } catch(e) {}
+    var merged = Object.assign({}, prev, _etfEdits);
+    sessionStorage.setItem('etf_edits', JSON.stringify(merged));
+  } catch(e) {}
+  _etfEdits = {};
+  closeEtfManager();
 }
 
 document.addEventListener('click', function(e) { var m = document.getElementById('etfModal'); if (m && e.target === m) closeEtfManager(); });
