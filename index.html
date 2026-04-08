@@ -761,7 +761,7 @@ input::placeholder { color: var(--muted); }
 }
 .etf-add-row {
   display: grid;
-  grid-template-columns: 70px 1fr 60px 50px auto;
+  grid-template-columns: 1fr auto;
   gap: 6px;
   align-items: center;
   padding: 10px 0 4px;
@@ -910,11 +910,8 @@ input::placeholder { color: var(--muted); }
     </div>
     <div class="etf-modal-body">
       <div class="etf-add-row">
-        <input id="newTicker"  type="text"   placeholder="TICKER" maxlength="10" style="text-transform:uppercase">
-        <input id="newName"    type="text"   placeholder="Fund name">
-        <input id="newYield"   type="number" placeholder="Yield%" min="0" max="100" step="0.1">
-        <input id="newEr"      type="number" placeholder="ER%" min="0" max="5" step="0.01">
-        <button class="run-btn" style="padding:6px 14px;font-size:0.7rem" onclick="addEtfRow()">+ Add</button>
+        <input id="newTicker" type="text" placeholder="Enter ticker symbol (e.g. MSFT)" maxlength="10" style="text-transform:uppercase;width:260px" onkeydown="if(event.key==='Enter')addEtfRow()">
+        <button class="run-btn" style="padding:6px 14px;font-size:0.7rem" onclick="addEtfRow()">+ Add &amp; Lookup</button>
       </div>
       <table class="etf-table" id="etfTable">
         <thead>
@@ -925,9 +922,7 @@ input::placeholder { color: var(--muted); }
             <th onclick="sortEtfTable('notes')" id="th-notes">Notes</th>
             <th onclick="sortEtfTable('yield')"><span class="th-tip" data-tip="Trailing 12-month dividend/distribution yield as a % of current price. Fetched live from Yahoo Finance.">Yield%</span></th>
             <th onclick="sortEtfTable('er')"><span class="th-tip" data-tip="Expense Ratio — annual fee charged by the fund. Lower is better. 0.03% = $3/yr per $10k.">ER%</span></th>
-            <th onclick="sortEtfTable('downturnBeta')"><span class="th-tip" data-tip="Downturn Beta — how much this fund drops vs the market. 1.0 = moves with market. 0.7 = drops only 70% as much.">Beta</span></th>
-            <th onclick="sortEtfTable('avgCapture')"><span class="th-tip" data-tip="Average Market Capture — % of market annual return this fund captures. 85% means if market returns 10%, fund returns ~8.5%.">Avg Cap%</span></th>
-            <th onclick="sortEtfTable('bullCapture')"><span class="th-tip" data-tip="Bull Market Capture — % of upside captured in a rally. Covered-call funds are typically 40-70% due to capped upside.">Bull Cap%</span></th>
+
             <th onclick="sortEtfTable('incomeType')"><span class="th-tip" data-tip="How distributions are taxed: Ordinary = highest rate, Qualified = cap gains rate, Mixed = both, Return of Capital = tax-deferred.">Income</span></th>
             <th onclick="sortEtfTable('accountRec')"><span class="th-tip" data-tip="Best account for tax efficiency. Ordinary income funds belong in Roth/IRA. Qualified dividend funds tolerate brokerage.">Account</span></th>
             <th class="no-sort"></th>
@@ -1314,9 +1309,7 @@ function renderEtfTable() {
     tr.appendChild(td('<span style="color:var(--muted);font-size:0.65rem">' + (d.description||'') + '</span>'));
     tr.appendChild(td(makeInput('number', d.yield||0,        '0.1',  'yield',       t)));
     tr.appendChild(td(makeInput('number', d.er||0,           '0.01', 'er',          t)));
-    tr.appendChild(td(makeInput('number', d.downturnBeta||1, '0.05', 'downturnBeta',t)));
-    tr.appendChild(td(makeInput('number', d.avgCapture||85,  '1',    'avgCapture',  t)));
-    tr.appendChild(td(makeInput('number', d.bullCapture||70, '1',    'bullCapture', t)));
+
     tr.appendChild(td(makeSelect('incomeType', ['ordinary','qualified','mixed','return'], d.incomeType, t)));
     tr.appendChild(td(makeSelect('accountRec', ['roth','ira','brokerage','either'],      d.accountRec, t)));
     var del = document.createElement('button'); del.className = 'etf-del-btn'; del.textContent = '✕';
@@ -1336,12 +1329,80 @@ function deleteEtf(ticker) {
   _etfEdits[ticker] = null; renderEtfTable();
 }
 
-function addEtfRow() {
+async function addEtfRow() {
   var t = (document.getElementById('newTicker').value||'').trim().toUpperCase();
-  if (!t) { alert('Enter a ticker'); return; }
-  _etfEdits[t] = { name: document.getElementById('newName').value||t, description: '', yield: parseFloat(document.getElementById('newYield').value)||0, er: parseFloat(document.getElementById('newEr').value)||0, downturnBeta:1.0, avgCapture:85, bullCapture:70, incomeType:'ordinary', accountRec:'roth' };
-  document.getElementById('newTicker').value = document.getElementById('newName').value = document.getElementById('newYield').value = document.getElementById('newEr').value = '';
+  if (!t) { alert('Enter a ticker symbol'); return; }
+  document.getElementById('newTicker').value = '';
+  document.getElementById('newTicker').placeholder = 'Looking up ' + t + '...';
+
+  // Seed with defaults immediately so it shows in table
+  _etfEdits[t] = { name: t, description: 'Looking up...', yield: 0, er: 0, downturnBeta:1.0, avgCapture:85, bullCapture:70, incomeType:'ordinary', accountRec:'roth', notes:'' };
   renderEtfTable();
+
+  // Live lookup
+  try {
+    var results = await Promise.all([yfetchSummary(t), yfetch(t), yfetch('SPY')]);
+    var summaryJ = results[0], chartJ = results[1], spyJ = results[2];
+    var liveData = { downturnBeta:1.0, avgCapture:85, bullCapture:70, incomeType:'ordinary', accountRec:'roth', notes:'' };
+
+    if (summaryJ) {
+      var fp = summaryJ.fundProfile || {};
+      var sp = summaryJ.summaryDetail || {};
+      var ks = summaryJ.defaultKeyStatistics || {};
+      liveData.name = fp.longName || fp.shortName || ks.longName || t;
+      liveData.description = (fp.longBusinessSummary || '').slice(0, 120) || liveData.name;
+      var erRaw = (fp.annualReportExpenseRatio && fp.annualReportExpenseRatio.raw) || (fp.totalExpenseRatio && fp.totalExpenseRatio.raw) || null;
+      if (erRaw != null) liveData.er = parseFloat((erRaw * 100).toFixed(2));
+      var yRaw = (sp.yield && sp.yield.raw) || (sp.trailingAnnualDividendYield && sp.trailingAnnualDividendYield.raw) || (sp.dividendYield && sp.dividendYield.raw) || null;
+      if (yRaw != null) liveData.yield = parseFloat((yRaw * 100).toFixed(2));
+      var betaRaw = (ks.beta && ks.beta.raw) || (sp.beta && sp.beta.raw) || null;
+      if (betaRaw != null) liveData.downturnBeta = parseFloat(betaRaw.toFixed(2));
+      var category = (fp.category || '').toLowerCase();
+      if (category.includes('bond') || category.includes('fixed') || category.includes('muni')) { liveData.incomeType='ordinary'; liveData.accountRec='ira'; }
+      else if (category.includes('dividend') || category.includes('equity income')) { liveData.incomeType='qualified'; liveData.accountRec='either'; }
+    }
+
+    if ((liveData.yield == null || liveData.yield === 0) && chartJ) {
+      var res0 = chartJ.chart.result[0]; var meta0 = res0.meta || {};
+      var evts = res0.events || {}; var divs = evts.dividends ? Object.values(evts.dividends) : [];
+      var price0 = meta0.regularMarketPrice || 0;
+      if (divs.length && price0 > 0) {
+        var nowTs = Date.now()/1000; var yrAgo = nowTs - 365*86400;
+        var ttm = divs.filter(function(d){ return d.date > yrAgo; }).reduce(function(s,d){ return s+d.amount; }, 0);
+        if (ttm > 0) liveData.yield = parseFloat((ttm/price0*100).toFixed(2));
+      }
+    }
+
+    if (chartJ && spyJ) {
+      try {
+        var etfQ = chartJ.chart.result[0].indicators.quote[0];
+        var spyQ = spyJ.chart.result[0].indicators.quote[0];
+        var etfC = etfQ.close.filter(function(v){ return v!=null; });
+        var spyC = spyQ.close.filter(function(v){ return v!=null; });
+        var len = Math.min(etfC.length, spyC.length, 252);
+        var etf = etfC.slice(-len), spy = spyC.slice(-len);
+        var etfRets=[], spyRets=[];
+        for (var k=1;k<len;k++) { etfRets.push((etf[k]-etf[k-1])/etf[k-1]); spyRets.push((spy[k]-spy[k-1])/spy[k-1]); }
+        var upE=0,upS=0,dnE=0,dnS=0,upN=0,dnN=0;
+        for (var j=0;j<etfRets.length;j++) {
+          if (spyRets[j]>0){upE+=etfRets[j];upS+=spyRets[j];upN++;}
+          else if (spyRets[j]<0){dnE+=etfRets[j];dnS+=spyRets[j];dnN++;}
+        }
+        var totalE=etf[len-1]/etf[0]-1, totalS=spy[len-1]/spy[0]-1;
+        if (Math.abs(totalS)>0.001) liveData.avgCapture = Math.round(Math.max(0,Math.min(150,(totalE/totalS)*100)));
+        if (upN>10 && Math.abs(upS)>0.001) liveData.bullCapture = Math.round(Math.max(0,Math.min(150,(upE/upS)*100)));
+      } catch(ce){ console.warn('Capture calc failed:', ce); }
+    }
+
+    _etfEdits[t] = liveData;
+    renderEtfTable();
+  } catch(e) {
+    console.warn('Lookup failed for', t, e);
+    _etfEdits[t].description = 'Lookup failed — edit manually';
+    renderEtfTable();
+  } finally {
+    document.getElementById('newTicker').placeholder = 'Enter ticker symbol (e.g. MSFT)';
+  }
 }
 
 function saveEtfList() {
