@@ -916,16 +916,15 @@ input::placeholder { color: var(--muted); }
       <table class="etf-table" id="etfTable">
         <thead>
           <tr>
-            <th onclick="sortEtfTable('ticker')" id="th-ticker">Ticker</th>
-            <th onclick="sortEtfTable('name')" id="th-name">Name</th>
-            <th onclick="sortEtfTable('description')" id="th-description">Description</th>
-            <th onclick="sortEtfTable('notes')" id="th-notes">Notes</th>
-            <th onclick="sortEtfTable('yield')"><span class="th-tip" data-tip="Trailing 12-month dividend/distribution yield as a % of current price. Fetched live from Yahoo Finance.">Yield%</span></th>
-            <th onclick="sortEtfTable('er')"><span class="th-tip" data-tip="Expense Ratio — annual fee charged by the fund. Lower is better. 0.03% = $3/yr per $10k.">ER%</span></th>
-
-            <th onclick="sortEtfTable('incomeType')"><span class="th-tip" data-tip="How distributions are taxed: Ordinary = highest rate, Qualified = cap gains rate, Mixed = both, Return of Capital = tax-deferred.">Income</span></th>
-            <th onclick="sortEtfTable('accountRec')"><span class="th-tip" data-tip="Best account for tax efficiency. Ordinary income funds belong in Roth/IRA. Qualified dividend funds tolerate brokerage.">Account</span></th>
-            <th class="no-sort"></th>
+            <th onclick="sortEtfTable('ticker')" style="min-width:70px">Ticker</th>
+            <th onclick="sortEtfTable('name')" style="min-width:180px">Name</th>
+            <th onclick="sortEtfTable('description')" style="min-width:220px">Description</th>
+            <th onclick="sortEtfTable('yield')" style="min-width:65px"><span class="th-tip" data-tip="Trailing 12-month dividend/distribution yield as a % of current price. Fetched live from Yahoo Finance.">Yield%</span></th>
+            <th onclick="sortEtfTable('er')" style="min-width:50px"><span class="th-tip" data-tip="Expense Ratio — annual fee charged by the fund. Lower is better. 0.03% = $3/yr per $10k.">ER%</span></th>
+            <th onclick="sortEtfTable('incomeType')" style="min-width:90px"><span class="th-tip" data-tip="How distributions are taxed: Ordinary = highest rate, Qualified = cap gains rate, Mixed = both, Return of Capital = tax-deferred.">Income</span></th>
+            <th onclick="sortEtfTable('accountRec')" style="min-width:80px"><span class="th-tip" data-tip="Best account for tax efficiency. Ordinary income funds belong in Roth/IRA. Qualified dividend funds tolerate brokerage.">Account</span></th>
+            <th style="min-width:220px">Notes</th>
+            <th class="no-sort" style="width:32px"></th>
           </tr>
         </thead>
         <tbody id="etfTableBody"></tbody>
@@ -1305,17 +1304,22 @@ function renderEtfTable() {
     var tr = document.createElement('tr');
     function td(c) { var cell = document.createElement('td'); if (typeof c === 'string') cell.innerHTML = c; else cell.appendChild(c); return cell; }
     tr.appendChild(td('<a class="ticker-cell" href="https://finance.yahoo.com/quote/' + t + '" target="_blank" title="Open ' + t + ' on Yahoo Finance">' + t + ' ↗</a>'));
-    tr.appendChild(td(makeInput('text',   d.name||'',        '',     'name',        t)));
-    tr.appendChild(td('<span style="color:var(--muted);font-size:0.65rem">' + (d.description||'') + '</span>'));
-    tr.appendChild(td(makeInput('number', d.yield||0,        '0.1',  'yield',       t)));
-    tr.appendChild(td(makeInput('number', d.er||0,           '0.01', 'er',          t)));
-
+    var nameInp = makeInput('text', d.name||'', '', 'name', t);
+    nameInp.style.cssText = 'width:100%;min-width:160px;';
+    tr.appendChild(td(nameInp));
+    tr.appendChild(td('<span style="color:var(--muted);font-size:0.65rem;line-height:1.4">' + (d.description||'') + '</span>'));
+    tr.appendChild(td(makeInput('number', d.yield||0, '0.1',  'yield', t)));
+    tr.appendChild(td(makeInput('number', d.er||0,    '0.01', 'er',    t)));
     tr.appendChild(td(makeSelect('incomeType', ['ordinary','qualified','mixed','return'], d.incomeType, t)));
     tr.appendChild(td(makeSelect('accountRec', ['roth','ira','brokerage','either'],      d.accountRec, t)));
-    var notesInp = makeInput('text', d.notes||'', '', 'notes', t);
-    notesInp.placeholder = 'Add notes...';
-    notesInp.style.cssText = 'min-width:200px;width:100%;';
-    tr.appendChild(td(notesInp));
+    var notesTa = document.createElement('textarea');
+    notesTa.value = d.notes || '';
+    notesTa.placeholder = 'Add notes...';
+    notesTa.rows = 3;
+    notesTa.dataset.field = 'notes';
+    notesTa.style.cssText = 'width:100%;min-width:200px;background:transparent;border:none;color:var(--text);font-family:DM Mono,monospace;font-size:0.67rem;resize:vertical;outline:none;padding:2px 4px;line-height:1.5;';
+    notesTa.addEventListener('change', function() { markEtfEdit(t, notesTa); });
+    tr.appendChild(td(notesTa));
     var del = document.createElement('button'); del.className = 'etf-del-btn'; del.textContent = '✕';
     del.addEventListener('click', function() { deleteEtf(t); }); tr.appendChild(td(del));
     tbody.appendChild(tr);
