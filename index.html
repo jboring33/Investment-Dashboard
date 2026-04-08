@@ -709,7 +709,8 @@ input::placeholder { color: var(--muted); }
 .etf-table input:focus, .etf-table select:focus {
   background: var(--surface2);
 }
-.etf-table .ticker-cell { color: var(--accent); font-weight: 500; }
+.etf-table .ticker-cell { color: var(--accent); font-weight: 500; text-decoration: none; }
+.etf-table .ticker-cell:hover { text-decoration: underline; }
 .th-tip {
   position: relative;
   cursor: help;
@@ -921,6 +922,7 @@ input::placeholder { color: var(--muted); }
             <th onclick="sortEtfTable('ticker')" id="th-ticker">Ticker</th>
             <th onclick="sortEtfTable('name')" id="th-name">Name</th>
             <th onclick="sortEtfTable('description')" id="th-description">Description</th>
+            <th onclick="sortEtfTable('notes')" id="th-notes">Notes</th>
             <th onclick="sortEtfTable('yield')"><span class="th-tip" data-tip="Trailing 12-month dividend/distribution yield as a % of current price. Fetched live from Yahoo Finance.">Yield%</span></th>
             <th onclick="sortEtfTable('er')"><span class="th-tip" data-tip="Expense Ratio — annual fee charged by the fund. Lower is better. 0.03% = $3/yr per $10k.">ER%</span></th>
             <th onclick="sortEtfTable('downturnBeta')"><span class="th-tip" data-tip="Downturn Beta — how much this fund drops vs the market. 1.0 = moves with market. 0.7 = drops only 70% as much.">Beta</span></th>
@@ -999,30 +1001,30 @@ input::placeholder { color: var(--muted); }
 // TICKER DATABASE
 // ════════════════════════════════════════════
 const TICKER_DB = {
-  'QQQI':  { name: 'NEOS Nasdaq-100 High Income',        yield: 14.2, er: 0.68, downturnBeta: 1.00, avgCapture: 90,  bullCapture: 55,  incomeType: 'mixed',     accountRec: 'roth'      },
-  'SPYI':  { name: 'NEOS S&P 500 High Income',           yield: 11.8, er: 0.68, downturnBeta: 0.85, avgCapture: 85,  bullCapture: 60,  incomeType: 'mixed',     accountRec: 'roth'      },
-  'IWMI':  { name: 'NEOS Russell 2000 High Income',      yield: 18.0, er: 0.68, downturnBeta: 1.05, avgCapture: 85,  bullCapture: 55,  incomeType: 'mixed',     accountRec: 'roth'      },
-  'JEPI':  { name: 'JPMorgan Equity Premium Income',     yield: 8.2,  er: 0.35, downturnBeta: 0.70, avgCapture: 75,  bullCapture: 50,  incomeType: 'ordinary',  accountRec: 'roth'      },
-  'JEPQ':  { name: 'JPMorgan Nasdaq Equity Premium',     yield: 11.0, er: 0.35, downturnBeta: 0.90, avgCapture: 82,  bullCapture: 68,  incomeType: 'ordinary',  accountRec: 'roth'      },
-  'DIVO':  { name: 'Amplify CWP Enhanced Div Income',    yield: 4.8,  er: 0.55, downturnBeta: 0.75, avgCapture: 80,  bullCapture: 70,  incomeType: 'qualified', accountRec: 'either'    },
-  'QYLD':  { name: 'Global X Nasdaq 100 Covered Call',   yield: 11.0, er: 0.60, downturnBeta: 0.90, avgCapture: 60,  bullCapture: 30,  incomeType: 'return',    accountRec: 'brokerage' },
-  'XYLD':  { name: 'Global X S&P 500 Covered Call',      yield: 9.5,  er: 0.60, downturnBeta: 0.80, avgCapture: 60,  bullCapture: 35,  incomeType: 'return',    accountRec: 'brokerage' },
-  'RYLD':  { name: 'Global X Russell 2000 Covered Call', yield: 12.0, er: 0.60, downturnBeta: 0.95, avgCapture: 55,  bullCapture: 30,  incomeType: 'return',    accountRec: 'brokerage' },
-  'SCHD':  { name: 'Schwab US Dividend Equity',          yield: 3.5,  er: 0.06, downturnBeta: 0.80, avgCapture: 90,  bullCapture: 80,  incomeType: 'qualified', accountRec: 'either'    },
-  'VYM':   { name: 'Vanguard High Dividend Yield',       yield: 2.9,  er: 0.06, downturnBeta: 0.82, avgCapture: 88,  bullCapture: 78,  incomeType: 'qualified', accountRec: 'either'    },
-  'DVY':   { name: 'iShares Select Dividend',            yield: 4.2,  er: 0.38, downturnBeta: 0.78, avgCapture: 80,  bullCapture: 65,  incomeType: 'qualified', accountRec: 'either'    },
-  'SPY':   { name: 'SPDR S&P 500 ETF',                   yield: 1.3,  er: 0.09, downturnBeta: 1.00, avgCapture: 100, bullCapture: 100, incomeType: 'qualified', accountRec: 'either'    },
-  'VOO':   { name: 'Vanguard S&P 500 ETF',               yield: 1.3,  er: 0.03, downturnBeta: 1.00, avgCapture: 100, bullCapture: 100, incomeType: 'qualified', accountRec: 'either'    },
-  'IVV':   { name: 'iShares Core S&P 500 ETF',           yield: 1.3,  er: 0.03, downturnBeta: 1.00, avgCapture: 100, bullCapture: 100, incomeType: 'qualified', accountRec: 'either'    },
-  'RSP':   { name: 'Invesco S&P 500 Equal Weight',       yield: 1.6,  er: 0.20, downturnBeta: 0.95, avgCapture: 98,  bullCapture: 95,  incomeType: 'qualified', accountRec: 'either'    },
-  'QQQ':   { name: 'Invesco Nasdaq-100 ETF',             yield: 0.6,  er: 0.20, downturnBeta: 1.00, avgCapture: 100, bullCapture: 100, incomeType: 'qualified', accountRec: 'either'    },
-  'VTI':   { name: 'Vanguard Total Stock Market',        yield: 1.4,  er: 0.03, downturnBeta: 1.00, avgCapture: 100, bullCapture: 100, incomeType: 'qualified', accountRec: 'either'    },
-  'AGG':   { name: 'iShares Core US Aggregate Bond',     yield: 3.8,  er: 0.03, downturnBeta: 0.10, avgCapture: 20,  bullCapture: 10,  incomeType: 'ordinary',  accountRec: 'ira'       },
-  'BND':   { name: 'Vanguard Total Bond Market',         yield: 3.7,  er: 0.03, downturnBeta: 0.10, avgCapture: 20,  bullCapture: 10,  incomeType: 'ordinary',  accountRec: 'ira'       },
-  'NUSI':  { name: 'Nationwide Nasdaq-100 Risk-Managed', yield: 7.5,  er: 0.68, downturnBeta: 0.60, avgCapture: 65,  bullCapture: 40,  incomeType: 'mixed',     accountRec: 'roth'      },
-  'PFFD':  { name: 'Global X US Preferred ETF',          yield: 6.5,  er: 0.23, downturnBeta: 0.60, avgCapture: 50,  bullCapture: 35,  incomeType: 'ordinary',  accountRec: 'roth'      },
-  'O':     { name: 'Realty Income Corp',                 yield: 5.6,  er: 0.00, downturnBeta: 0.70, avgCapture: 60,  bullCapture: 45,  incomeType: 'ordinary',  accountRec: 'roth'      },
-  'MAIN':  { name: 'Main Street Capital',                yield: 6.8,  er: 0.00, downturnBeta: 0.80, avgCapture: 75,  bullCapture: 60,  incomeType: 'ordinary',  accountRec: 'roth'      },
+  'QQQI':  { name: 'NEOS Nasdaq-100 High Income',        yield: 14.2, er: 0.68, downturnBeta: 1.00, avgCapture: 90,  bullCapture: 55,  incomeType: 'mixed',     accountRec: 'roth'      , description: 'Nasdaq-100 covered calls via index options (60/40 tax treatment). Highest yield in category.'},
+  'SPYI':  { name: 'NEOS S&P 500 High Income',           yield: 11.8, er: 0.68, downturnBeta: 0.85, avgCapture: 85,  bullCapture: 60,  incomeType: 'mixed',     accountRec: 'roth'      , description: 'S&P 500 covered calls via index options (60/40 tax treatment). Tax-efficient income.'},
+  'IWMI':  { name: 'NEOS Russell 2000 High Income',      yield: 18.0, er: 0.68, downturnBeta: 1.05, avgCapture: 85,  bullCapture: 55,  incomeType: 'mixed',     accountRec: 'roth'      , description: 'Russell 2000 covered calls via index options. Small-cap exposure with high income.'},
+  'JEPI':  { name: 'JPMorgan Equity Premium Income',     yield: 8.2,  er: 0.35, downturnBeta: 0.70, avgCapture: 75,  bullCapture: 50,  incomeType: 'ordinary',  accountRec: 'roth'      , description: 'S&P 500 equity-linked notes (ELNs). JPMorgan actively managed, defensive bias.'},
+  'JEPQ':  { name: 'JPMorgan Nasdaq Equity Premium',     yield: 11.0, er: 0.35, downturnBeta: 0.90, avgCapture: 82,  bullCapture: 68,  incomeType: 'ordinary',  accountRec: 'roth'      , description: 'Nasdaq-100 equity-linked notes (ELNs). JPMorgan actively managed, tech exposure.'},
+  'DIVO':  { name: 'Amplify CWP Enhanced Div Income',    yield: 4.8,  er: 0.55, downturnBeta: 0.75, avgCapture: 80,  bullCapture: 70,  incomeType: 'qualified', accountRec: 'either'    , description: 'Quality dividend stocks + selective covered calls. Lower yield, better upside capture.'},
+  'QYLD':  { name: 'Global X Nasdaq 100 Covered Call',   yield: 11.0, er: 0.60, downturnBeta: 0.90, avgCapture: 60,  bullCapture: 30,  incomeType: 'return',    accountRec: 'brokerage' , description: 'Nasdaq-100 at-the-money covered calls. High yield but minimal price appreciation.'},
+  'XYLD':  { name: 'Global X S&P 500 Covered Call',      yield: 9.5,  er: 0.60, downturnBeta: 0.80, avgCapture: 60,  bullCapture: 35,  incomeType: 'return',    accountRec: 'brokerage' , description: 'S&P 500 at-the-money covered calls. High yield, capped upside.'},
+  'RYLD':  { name: 'Global X Russell 2000 Covered Call', yield: 12.0, er: 0.60, downturnBeta: 0.95, avgCapture: 55,  bullCapture: 30,  incomeType: 'return',    accountRec: 'brokerage' , description: 'Russell 2000 covered calls. High yield, small-cap volatility.'},
+  'SCHD':  { name: 'Schwab US Dividend Equity',          yield: 3.5,  er: 0.06, downturnBeta: 0.80, avgCapture: 90,  bullCapture: 80,  incomeType: 'qualified', accountRec: 'either'    , description: 'Quality dividend growth stocks. Low cost, strong long-term total return.'},
+  'VYM':   { name: 'Vanguard High Dividend Yield',       yield: 2.9,  er: 0.06, downturnBeta: 0.82, avgCapture: 88,  bullCapture: 78,  incomeType: 'qualified', accountRec: 'either'    , description: 'Broad high-dividend yield index. Low cost, diversified income.'},
+  'DVY':   { name: 'iShares Select Dividend',            yield: 4.2,  er: 0.38, downturnBeta: 0.78, avgCapture: 80,  bullCapture: 65,  incomeType: 'qualified', accountRec: 'either'    , description: 'High dividend yield with quality screens. Slightly higher yield than VYM.'},
+  'SPY':   { name: 'SPDR S&P 500 ETF',                   yield: 1.3,  er: 0.09, downturnBeta: 1.00, avgCapture: 100, bullCapture: 100, incomeType: 'qualified', accountRec: 'either'    , description: 'S&P 500 index ETF. Benchmark for large-cap US equities. Oldest US ETF.'},
+  'VOO':   { name: 'Vanguard S&P 500 ETF',               yield: 1.3,  er: 0.03, downturnBeta: 1.00, avgCapture: 100, bullCapture: 100, incomeType: 'qualified', accountRec: 'either'    , description: 'S&P 500 index ETF by Vanguard. Lower cost than SPY, identical exposure.'},
+  'IVV':   { name: 'iShares Core S&P 500 ETF',           yield: 1.3,  er: 0.03, downturnBeta: 1.00, avgCapture: 100, bullCapture: 100, incomeType: 'qualified', accountRec: 'either'    , description: 'S&P 500 index ETF by iShares. Ultra-low cost, highly liquid.'},
+  'RSP':   { name: 'Invesco S&P 500 Equal Weight',       yield: 1.6,  er: 0.20, downturnBeta: 0.95, avgCapture: 98,  bullCapture: 95,  incomeType: 'qualified', accountRec: 'either'    , description: 'S&P 500 equal-weight. Each stock ~0.2% regardless of market cap.'},
+  'QQQ':   { name: 'Invesco Nasdaq-100 ETF',             yield: 0.6,  er: 0.20, downturnBeta: 1.00, avgCapture: 100, bullCapture: 100, incomeType: 'qualified', accountRec: 'either'    , description: 'Nasdaq-100 index ETF. Top 100 non-financial Nasdaq stocks, tech-heavy.'},
+  'VTI':   { name: 'Vanguard Total Stock Market',        yield: 1.4,  er: 0.03, downturnBeta: 1.00, avgCapture: 100, bullCapture: 100, incomeType: 'qualified', accountRec: 'either'    , description: 'Total US stock market. ~4,000 stocks, small/mid/large blend.'},
+  'AGG':   { name: 'iShares Core US Aggregate Bond',     yield: 3.8,  er: 0.03, downturnBeta: 0.10, avgCapture: 20,  bullCapture: 10,  incomeType: 'ordinary',  accountRec: 'ira'       , description: 'US aggregate bond market. Mix of treasuries, mortgages, corporates.'},
+  'BND':   { name: 'Vanguard Total Bond Market',         yield: 3.7,  er: 0.03, downturnBeta: 0.10, avgCapture: 20,  bullCapture: 10,  incomeType: 'ordinary',  accountRec: 'ira'       , description: 'Total US bond market by Vanguard. Broad fixed income exposure.'},
+  'NUSI':  { name: 'Nationwide Nasdaq-100 Risk-Managed', yield: 7.5,  er: 0.68, downturnBeta: 0.60, avgCapture: 65,  bullCapture: 40,  incomeType: 'mixed',     accountRec: 'roth'      , description: 'Nasdaq-100 with protective put collar. Downside protection, capped upside.'},
+  'PFFD':  { name: 'Global X US Preferred ETF',          yield: 6.5,  er: 0.23, downturnBeta: 0.60, avgCapture: 50,  bullCapture: 35,  incomeType: 'ordinary',  accountRec: 'roth'      , description: 'US preferred stock index. Fixed-rate hybrid securities, high income.'},
+  'O':     { name: 'Realty Income Corp',                 yield: 5.6,  er: 0.00, downturnBeta: 0.70, avgCapture: 60,  bullCapture: 45,  incomeType: 'ordinary',  accountRec: 'roth'      , description: 'Monthly dividend REIT. Retail/commercial properties, 30+ year dividend growth.'},
+  'MAIN':  { name: 'Main Street Capital',                yield: 6.8,  er: 0.00, downturnBeta: 0.80, avgCapture: 75,  bullCapture: 60,  incomeType: 'ordinary',  accountRec: 'roth'      , description: 'Business development company (BDC). Lends to middle-market companies.'},
 };
 
 const COLORS = ['#c8a96e','#5cb8a0','#8b7fd4','#e05c8a','#4ab8d4'];
@@ -1307,9 +1309,9 @@ function renderEtfTable() {
     var d = db[t];
     var tr = document.createElement('tr');
     function td(c) { var cell = document.createElement('td'); if (typeof c === 'string') cell.innerHTML = c; else cell.appendChild(c); return cell; }
-    tr.appendChild(td('<span class="ticker-cell">' + t + '</span>'));
+    tr.appendChild(td('<a class="ticker-cell" href="https://finance.yahoo.com/quote/' + t + '" target="_blank" title="Open ' + t + ' on Yahoo Finance">' + t + ' ↗</a>'));
     tr.appendChild(td(makeInput('text',   d.name||'',        '',     'name',        t)));
-    tr.appendChild(td(makeInput('text',   d.description||'', '',     'description', t)));
+    tr.appendChild(td('<span style="color:var(--muted);font-size:0.65rem">' + (d.description||'') + '</span>'));
     tr.appendChild(td(makeInput('number', d.yield||0,        '0.1',  'yield',       t)));
     tr.appendChild(td(makeInput('number', d.er||0,           '0.01', 'er',          t)));
     tr.appendChild(td(makeInput('number', d.downturnBeta||1, '0.05', 'downturnBeta',t)));
