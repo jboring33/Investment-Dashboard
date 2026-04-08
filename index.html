@@ -1312,6 +1312,10 @@ function renderEtfTable() {
 
     tr.appendChild(td(makeSelect('incomeType', ['ordinary','qualified','mixed','return'], d.incomeType, t)));
     tr.appendChild(td(makeSelect('accountRec', ['roth','ira','brokerage','either'],      d.accountRec, t)));
+    var notesInp = makeInput('text', d.notes||'', '', 'notes', t);
+    notesInp.placeholder = 'Add notes...';
+    notesInp.style.cssText = 'min-width:200px;width:100%;';
+    tr.appendChild(td(notesInp));
     var del = document.createElement('button'); del.className = 'etf-del-btn'; del.textContent = '✕';
     del.addEventListener('click', function() { deleteEtf(t); }); tr.appendChild(td(del));
     tbody.appendChild(tr);
