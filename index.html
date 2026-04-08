@@ -637,7 +637,7 @@ input::placeholder { color: var(--muted); }
   background: var(--surface);
   border: 1px solid var(--border2);
   border-radius: 12px;
-  width: min(720px, 95vw);
+  width: min(1100px, 98vw);
   max-height: 85vh;
   display: flex;
   flex-direction: column;
@@ -1217,6 +1217,19 @@ function onTickerBlur(i) {
   setTimeout(function() {
     var list = document.getElementById('ac_' + i);
     if (list) list.classList.remove('open');
+    var tickerEl = document.getElementById('ticker_' + i);
+    if (tickerEl && tickerEl.value) {
+      var t = tickerEl.value.trim().toUpperCase();
+      var db = getTickerList();
+      if (!db[t]) {
+        tickerEl.style.color = 'var(--danger)';
+        tickerEl.title = t + ' is not in your ETF List. Add it there first.';
+        setLookupStatus(i, t + ' not in ETF List — add it first');
+        return;
+      }
+      tickerEl.style.color = '';
+      tickerEl.title = '';
+    }
     autoFillTicker(i);
   }, 150);
 }
@@ -1282,7 +1295,9 @@ function makeSelect(field, options, current, ticker) {
 
 function makeInput(type, value, step, field, ticker) {
   var inp = document.createElement('input');
-  inp.type = type; inp.value = value; if (step) inp.step = step;
+  inp.type = type;
+  inp.value = (value != null) ? value : (type === 'number' ? 0 : '');
+  if (step) inp.step = step;
   inp.dataset.field = field;
   inp.addEventListener('change', function() { markEtfEdit(ticker, inp); });
   return inp;
@@ -1402,11 +1417,16 @@ async function addEtfRow() {
       } catch(ce){ console.warn('Capture calc failed:', ce); }
     }
 
+    // Ensure required fields always have a value
+    if (!liveData.name) liveData.name = t;
+    if (!liveData.description) liveData.description = liveData.name;
+    if (liveData.er == null) liveData.er = 0;
+    if (liveData.yield == null) liveData.yield = 0;
     _etfEdits[t] = liveData;
     renderEtfTable();
   } catch(e) {
     console.warn('Lookup failed for', t, e);
-    _etfEdits[t].description = 'Lookup failed — edit manually';
+    if (_etfEdits[t]) _etfEdits[t].description = 'Lookup failed — enter manually';
     renderEtfTable();
   } finally {
     document.getElementById('newTicker').placeholder = 'Enter ticker symbol (e.g. MSFT)';
@@ -1608,7 +1628,7 @@ function buildChart() {
               var income   = Math.max(0, totalVal - priceVal);
               var totalPct = (((totalVal - START) / START) * 100).toFixed(1);
               var sign = parseFloat(totalPct) >= 0 ? '+' : '';
-              return [' '+ctx.dataset.label+': $'+totalVal.toLocaleString()+' ('+sign+totalPct+'%)','   ├ Price:   $'+priceVal.toLocaleString(),'   └ Income: +$'+income.toLocaleString()];
+              return [' '+ctx.dataset.label+': '+(totalVal >= 0 ? '$' : '-$')+Math.abs(totalVal).toLocaleString()+' ('+sign+totalPct+'%)','   ├ Price:   '+(priceVal >= 0 ? '$'+priceVal.toLocaleString() : '-$'+Math.abs(priceVal).toLocaleString()),'   └ Income: '+(income >= 0 ? '+$'+income.toLocaleString() : '-$'+Math.abs(income).toLocaleString())];
             },
             labelColor: function(ctx) { var c=ctx.dataset.borderColor; return {borderColor:c,backgroundColor:c,borderWidth:2,borderRadius:2}; },
           }
